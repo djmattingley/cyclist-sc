@@ -29,7 +29,7 @@ export default function LoginPage() {
   }
 
   async function verifyOtp() {
-    if (!token || token.length !== 6) return
+    if (!token || token.length < 6) return
     setLoading(true)
     setError(null)
     const supabase = createClient()
@@ -102,22 +102,22 @@ export default function LoginPage() {
             <>
               <div>
                 <label style={{ fontSize: 10, fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, letterSpacing: '.12em', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>
-                  6-DIGIT CODE
+                  CODE
                 </label>
                 <input
                   type="text"
                   inputMode="numeric"
-                  maxLength={6}
+                  maxLength={8}
                   value={token}
                   onChange={e => setToken(e.target.value.replace(/\D/g, ''))}
                   onKeyDown={e => e.key === 'Enter' && verifyOtp()}
-                  placeholder="123456"
+                  placeholder="12345678"
                   autoFocus
                   style={{ ...inputStyle, fontSize: 24, letterSpacing: '0.3em', textAlign: 'center', fontFamily: "'DM Mono',monospace" }}
                 />
               </div>
               {error && <ErrorBox msg={error} />}
-              <button onClick={verifyOtp} disabled={loading || token.length !== 6} style={btnStyle(!loading && token.length === 6)}>
+              <button onClick={verifyOtp} disabled={loading || token.length < 6} style={btnStyle(!loading && token.length >= 6)}>
                 {loading ? 'VERIFYING…' : 'SIGN IN →'}
               </button>
               <button
