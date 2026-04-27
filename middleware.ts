@@ -21,11 +21,18 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
   if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
     return supabaseResponse
+  }
+
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // If auth check fails, treat as unauthenticated
   }
 
   if (!user && pathname !== '/login') {
