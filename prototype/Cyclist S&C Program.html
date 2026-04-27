@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyclist S&C Program</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="sc-data.js?v=2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:oklch(0.11 0.012 255);--surface:oklch(0.16 0.010 255);
+  --border:oklch(0.24 0.010 255);--text:oklch(0.93 0.005 90);
+  --muted:oklch(0.52 0.010 255);--accent:oklch(0.82 0.20 128);
+  --accent-dim:oklch(0.82 0.20 128/0.12);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+#root{min-height:100%}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.fade-in{animation:fadeIn .35s ease both}
+.slide-down{animation:slideDown .28s cubic-bezier(.4,0,.2,1) both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+textarea,input{font-family:'DM Sans',sans-serif}
+input[type=range]{accent-color:var(--accent);width:100%}
+.spinner{width:16px;height:16px;border:2px solid oklch(0.30 0.01 255);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- ── COMPONENTS ── -->
+<script type="text/babel">
+const { useState, useCallback, useMemo } = React;
+const CM  = window.SC_COLOR_MAP;
+// Inline gym data — guaranteed regardless of sc-data.js cache
+(function(){
+  const EX = window.SC_EX || {};
+  const gymExercises = {
+    trapBarDL:{ name:"Trap-Bar Deadlift", cat:"lower", icon:"◆",
+      cues:["Stand inside bar, feet hip-width, handles at sides","Hinge and grip — chest up, hips back, arms straight","Drive through both feet simultaneously","Keep the bar close — don't let it drift forward"],
+      regression:"Romanian deadlift (bilateral)", progression:"Add load; single-leg trap-bar RDL Block 3+" },
+    boxStepDown:{ name:"Box Step-Down", cat:"power-prep", icon:"▲",
+      cues:["Stand on box edge, working foot on box, free foot hanging","Lower the free heel toward the floor under control — 3 s","Working leg absorbs all the load — don't plop down","Return to standing by driving through the working heel"],
+      regression:"Assisted skater squat", progression:"Higher box; add light load" },
+    trapBarJump:{ name:"Trap-Bar Jump", cat:"power-rfd", icon:"⚡",
+      cues:["Light load — 20–40% of trap-bar DL max","Explosive intent on every rep","Land softly — absorb through hips and knees","Full reset between reps — not a squat jump"],
+      regression:"DB hang clean", progression:"Slightly increase load; reactive bounding" },
+    mbChestThrow:{ name:"Med Ball Chest Throw", cat:"power-rfd", icon:"⚡",
+      cues:["Stand ~1 m from a solid wall","Explosive chest press — full body drive","Catch and reset — quality over speed","Max intent each throw"],
+      regression:"Push-up with explosive push phase", progression:"Heavier ball; step back" },
+    cableFacePull:{ name:"Cable Face Pull", cat:"upper", icon:"●",
+      cues:["Cable at eye height, rope attachment","Pull to forehead — elbows high and wide","Externally rotate at end — thumbs back, pause 1 s","Control the return over 2 s"],
+      regression:"Band pull-apart", progression:"Increase load; 2 s hold at end range" },
+    dbBenchPress:{ name:"DB Bench Press", cat:"upper", icon:"●",
+      cues:["Feet flat on floor, natural arch in back","Lower DBs to chest over 2 s — elbows ~45° from torso","Drive up through the heel of each hand","DBs meet at top — don't let them drift over your face"],
+      regression:"Push-up (floor)", progression:"Increase load; single-arm DB press" },
+    cableRow:{ name:"Seated Cable Row", cat:"upper", icon:"●",
+      cues:["Sit tall, slight forward lean at start","Drive elbows back to ribs — not up","Squeeze shoulder blades hard at end range","Control the return over 2 s — don't let cable pull you forward"],
+      regression:"Single-arm KB row", progression:"Increase load; 3 s eccentric" },
+    inclineBenchYTW:{ name:"Incline Bench Y-T-W", cat:"upper", icon:"●",
+      cues:["Prone on incline bench (~45°), thumbs up throughout","Y — reach overhead at 45°, hold 2 s","T — arms out sideways, hold 2 s","W — elbows bent, pull back, squeeze shoulder blades, hold 2 s"],
+      regression:"Floor Y-T-W bodyweight", progression:"Add light plates (0.5–1 kg); longer holds" },
+    cablePaloff:{ name:"Cable Pallof Press", cat:"core", icon:"■",
+      cues:["Cable at chest height, stand sideways to the stack","Press straight out — resist the rotation","Pause 2 s at full extension","Keep hips and shoulders square throughout"],
+      regression:"Band Pallof press", progression:"3 s pause; overhead cable Pallof variation" },
+    trapBarCarry:{ name:"Trap-Bar Farmer Carry", cat:"core", icon:"■",
+      cues:["Stand inside trap bar — load heavier than a KB carry","Stand tall, brace hard","Short quick steps — don't waddle","Anti-lateral flexion — this is trunk work, not a stroll"],
+      regression:"KB suitcase carry (one side)", progression:"Heavier load; longer distance" },
+  };
+  Object.assign(EX, gymExercises);
+  window.SC_EX = EX;
+  if(!window.SC_GYM_SWAPS || !Object.keys(window.SC_GYM_SWAPS).length){
+    window.SC_GYM_SWAPS = {
+      rdl:'trapBarDL', skaterSquat:'boxStepDown',
+      bandHipSnap:'trapBarJump', dbHangClean:'trapBarJump',
+      bandPullApart:'cableFacePull',
+      pushUp:'dbBenchPress', kbRow:'cableRow', faceYTW:'inclineBenchYTW',
+      paloff:'cablePaloff', farmerCarry:'trapBarCarry',
+    };
+  }
+})();
+const SC_GYM_SWAPS = window.SC_GYM_SWAPS || {};
+const EnvCtx = React.createContext('home');
+const CC  = window.SC_CAT_COLORS;
+const EX  = window.SC_EX;
+
+/* ── tiny helpers ───────────────────────────────────────────────── */
+const bc = (blockId, weekN, suffix='') => `b${blockId}-w${weekN}${suffix}`;
+const ls = {
+  get:(k,fb={})=>{ try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(fb))}catch{return fb} },
+  set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)),
+};
+
+/* ── RPEBar ─────────────────────────────────────────────────────── */
+function RPEBar({rpe}){
+  const v=parseFloat(String(rpe).split('–').pop())/10, filled=Math.round(v*10);
+  return(
+    <div style={{display:'flex',gap:3,alignItems:'center'}}>
+      {Array.from({length:10},(_,i)=>(
+        <div key={i} style={{width:12,height:4,borderRadius:2,
+          background:i<filled?'var(--accent)':'oklch(0.28 0.01 255)',transition:'background .2s'}}/>
+      ))}
+      <span style={{marginLeft:6,fontFamily:"'DM Mono',monospace",fontSize:11,color:'var(--muted)'}}>RPE {rpe}</span>
+    </div>
+  );
+}
+
+/* ── CatTag ─────────────────────────────────────────────────────── */
+function CatTag({cat}){
+  const labels={'mobility':'MOBILITY','power-prep':'POWER PREP','power-rfd':'POWER / RFD','lower':'LOWER','upper':'UPPER','core':'CORE'};
+  const c=CC[cat]||CC.core;
+  return(
+    <span style={{fontSize:9,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:'.12em',
+      color:c.accent,background:c.bg,padding:'2px 7px',borderRadius:3,border:`1px solid ${c.accent}44`}}>
+      {labels[cat]||cat.toUpperCase()}
+    </span>
+  );
+}
+
+/* ── ExerciseCard ───────────────────────────────────────────────── */
+function ExerciseCard({exKey,sets,reps,note}){
+  const [open,setOpen]=useState(false);
+  const env=React.useContext(EnvCtx);
+  const resolvedKey=env==='gym'?(SC_GYM_SWAPS[exKey]||exKey):exKey;
+  const ex=EX[resolvedKey]||EX[exKey];
+  if(!ex) return null;
+  const isSwapped=env==='gym'&&!!SC_GYM_SWAPS[exKey];
+  const c=CC[ex.cat]||CC.core;
+  return(
+    <div onClick={()=>setOpen(o=>!o)} style={{
+      background:open?'oklch(0.19 0.012 255)':'oklch(0.165 0.010 255)',
+      border:`1px solid ${open?c.accent+'55':'oklch(0.24 0.01 255)'}`,
+      borderRadius:10,overflow:'hidden',cursor:'pointer',transition:'border-color .2s,background .2s'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
+        <span style={{color:c.accent,fontSize:14,flexShrink:0}}>{ex.icon}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:15}}>{ex.name}</span>
+            <CatTag cat={ex.cat}/>
+            {isSwapped&&<span style={{fontSize:9,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:'.12em',color:'oklch(0.70 0.15 290)',background:'oklch(0.70 0.15 290/0.12)',padding:'2px 6px',borderRadius:3,border:'1px solid oklch(0.70 0.15 290/0.35)'}}>GYM</span>}
+          </div>
+          {note&&<div style={{fontSize:11,color:'oklch(0.60 0.01 255)',marginTop:2}}>{note}</div>}
+        </div>
+        <span style={{fontFamily:"'DM Mono',monospace",fontSize:sets?13:12,
+          color:sets?c.accent:'var(--muted)',fontWeight:500,flexShrink:0}}>
+          {sets?`${sets} × ${reps}`:reps}
+        </span>
+        <span style={{color:'var(--muted)',fontSize:12,marginLeft:4,
+          transform:open?'rotate(180deg)':'none',transition:'transform .2s'}}>▾</span>
+      </div>
+      {open&&(
+        <div className="slide-down" style={{padding:'0 14px 14px',borderTop:'1px solid oklch(0.22 0.01 255)'}}>
+          <div style={{marginTop:12,display:'grid',gap:10}}>
+            <div>
+              <div style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+                letterSpacing:'.12em',color:c.accent,marginBottom:6}}>COACHING CUES</div>
+              {ex.cues.map((cue,i)=>(
+                <div key={i} style={{display:'flex',gap:8,marginBottom:5}}>
+                  <span style={{color:c.accent,fontSize:10,marginTop:3,flexShrink:0}}>→</span>
+                  <span style={{fontSize:13,color:'oklch(0.80 0.005 90)',lineHeight:1.5}}>{cue}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              {[['REGRESSION',ex.regression],['PROGRESSION',ex.progression]].map(([lbl,txt])=>(
+                <div key={lbl} style={{background:'oklch(0.14 0.01 255)',borderRadius:8,
+                  padding:'8px 10px',border:'1px solid oklch(0.22 0.01 255)'}}>
+                  <div style={{fontSize:9,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+                    letterSpacing:'.12em',color:'var(--muted)',marginBottom:5}}>{lbl}</div>
+                  <div style={{fontSize:12,color:'oklch(0.75 0.005 90)',lineHeight:1.5}}>{txt}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── BlockSection ───────────────────────────────────────────────── */
+function BlockSection({block}){
+  const c=CC[block.cat]||CC.core;
+  return(
+    <div style={{marginBottom:16}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+        <div style={{width:3,height:18,borderRadius:2,background:c.accent}}/>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,
+          letterSpacing:'.10em',color:c.accent}}>{block.name.toUpperCase()}</div>
+        <div style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:'var(--muted)'}}>{block.dur}</div>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+        {block.exercises.map((e,i)=><ExerciseCard key={i} exKey={e.ex} sets={e.sets} reps={e.reps} note={e.note}/>)}
+      </div>
+    </div>
+  );
+}
+
+/* ── QuickSession: strips Upper, 1 set Core, drops last Lower ───── */
+function QuickSession({blocks}){
+  const trimmed = blocks
+    .filter(b=>b.cat!=='upper')
+    .map(b=>{
+      if(b.cat==='core'){
+        return {...b, exercises: b.exercises.map(e=>({...e,sets:'1'}))};
+      }
+      if(b.cat==='lower'){
+        const exs=[...b.exercises];exs.pop();
+        return {...b,exercises:exs};
+      }
+      return b;
+    });
+  const mins=trimmed.reduce((acc,b)=>acc+parseInt(b.dur),0);
+  return(
+    <div className="slide-down" style={{padding:'0 20px 16px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14,
+        padding:'8px 12px',background:'oklch(0.78 0.16 60/0.08)',borderRadius:8,
+        border:'1px solid oklch(0.78 0.16 60/0.3)'}}>
+        <span style={{color:'oklch(0.78 0.16 60)',fontSize:14}}>⚡</span>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,
+            letterSpacing:'.08em',color:'oklch(0.78 0.16 60)'}}>QUICK SESSION — ~{mins} MIN</div>
+          <div style={{fontSize:11,color:'oklch(0.60 0.01 255)',marginTop:1}}>
+            Upper removed · Core 1 set each · Last lower exercise dropped
+          </div>
+        </div>
+      </div>
+      {trimmed.map((b,i)=><BlockSection key={i} block={b}/>)}
+    </div>
+  );
+}
+
+/* ── MicroSession (Block 2) ─────────────────────────────────────── */
+function MicroSession({options,note}){
+  const [sel,setSel]=useState(0);
+  const opt=options[sel];
+  return(
+    <div style={{borderTop:'1px solid oklch(0.20 0.01 255)',padding:'14px 20px 20px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+        <div style={{width:3,height:16,borderRadius:2,background:'oklch(0.70 0.15 290)'}}/>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,
+          letterSpacing:'.10em',color:'oklch(0.70 0.15 290)'}}>MICRO-SESSION (5–10 MIN)</div>
+      </div>
+      <div style={{fontSize:12,color:'oklch(0.55 0.01 255)',marginBottom:12,lineHeight:1.55}}>{note}</div>
+      {/* Option tabs */}
+      <div style={{display:'flex',gap:6,marginBottom:12}}>
+        {options.map((o,i)=>(
+          <button key={i} onClick={()=>setSel(i)} style={{
+            padding:'5px 12px',borderRadius:7,border:'none',cursor:'pointer',
+            background:sel===i?'oklch(0.70 0.15 290/0.15)':'oklch(0.18 0.01 255)',
+            color:sel===i?'oklch(0.70 0.15 290)':'var(--muted)',
+            fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,letterSpacing:'.06em',
+            border:`1px solid ${sel===i?'oklch(0.70 0.15 290/0.4)':'oklch(0.24 0.01 255)'}`,
+            transition:'all .15s'}}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+        {opt.exercises.map((e,i)=><ExerciseCard key={i} exKey={e.ex} sets={e.sets} reps={e.reps} note={e.note}/>)}
+      </div>
+    </div>
+  );
+}
+
+/* ── FeedbackPanel ──────────────────────────────────────────────── */
+function FeedbackPanel({blockId,weekN,sessionLabel,blocks,nextBlocks,nextLabel,saved,onSave,onClose,escalationLevel}){
+  const env=React.useContext(EnvCtx);
+  const cyclingPhase=localStorage.getItem('sc_phase');
+  const [time,setTime]    = useState(saved?.time    ?? '');
+  const [soreness,setSore]= useState(saved?.soreness?? '');
+  const [ride,setRide]    = useState(saved?.ride    ?? '');
+  const [rpe,setRpe]      = useState(saved?.rpe     ?? 5);
+  const [loading,setLoad] = useState(false);
+  const [result,setResult]= useState(saved?.result  ?? null);
+  const blockData = window.SC_BLOCKS.find(b=>b.id===blockId);
+
+  const inpStyle={
+    width:'100%',background:'oklch(0.13 0.01 255)',border:'1px solid oklch(0.26 0.01 255)',
+    borderRadius:8,padding:'9px 12px',color:'var(--text)',fontSize:13,outline:'none',lineHeight:1.5,
+  };
+
+  const handleSubmit=async()=>{
+    if(!time&&!soreness&&!ride) return;
+    setLoad(true);
+    const isLastWeek = !nextBlocks;
+    const sessionStr = window.SC_sessionToText(blocks);
+    const nextStr    = nextBlocks ? window.SC_sessionToText(nextBlocks) : null;
+    const escalMsg   = escalationLevel>=2 ? `\n⚠ ESCALATION: ${escalationLevel} consecutive high-fatigue weeks reported.` : '';
+
+    const prompt =
+`Athlete completed Block ${blockId} Week ${weekN}${sessionLabel?' — '+sessionLabel:''}.
+Block: ${blockData?.label} (${blockData?.subtitle}). Environment: ${env==='gym'?'Gym':'Home'}. Cycling Phase: ${cyclingPhase||'Rebuild Mode'}.${escalMsg}
+
+COMPLETED SESSION:
+${sessionStr}
+
+ATHLETE FEEDBACK:
+- Time taken: ${time||'not reported'}
+- Soreness: ${soreness||'not reported'}
+- Ride impact: ${ride||'not reported'}
+- Perceived effort: RPE ${rpe}/10 (planned: RPE ${window.SC_BLOCKS[blockId-1]?.weeks.find(w=>w.n===weekN)?.rpe})
+
+${isLastWeek
+  ? 'This was the final week of Block '+blockId+'. Summarise block readiness and give one note for Block '+(blockId+1)+'.'
+  : `PLANNED NEXT SESSION (${nextLabel||''}):\n${nextStr}\n\nShould this session proceed as planned or be adjusted?`}`;
+
+    try{
+      const text=await window.claude.complete({messages:[{role:'user',content:prompt}],system:window.SC_SYSTEM_PROMPT});
+      const outcome={time,soreness,ride,rpe,result:text,ts:Date.now()};
+      onSave(outcome);
+      setResult(text);
+    }catch(e){
+      setResult('Error reaching coach — please try again.');
+    }
+    setLoad(false);
+  };
+
+  const blockWeek = window.SC_BLOCKS[blockId-1]?.weeks.find(w=>w.n===weekN);
+  const c = CM[blockWeek?.color]||CM.accent;
+
+  function renderResult(text){
+    const keyColors={VERDICT:'var(--accent)',CHANGES:'oklch(0.78 0.16 60)',
+      REASON:'oklch(0.65 0.18 25)',['COACH NOTE']:'oklch(0.70 0.15 290)',
+      SUMMARY:'var(--accent)',READINESS:'oklch(0.78 0.16 60)'};
+    const sections=[];let cur=null,buf=[];
+    const flush=()=>{if(cur||buf.length){sections.push({label:cur,lines:[...buf]});buf=[];cur=null;}};
+    for(const line of text.split('\n').filter(l=>l.trim())){
+      const ci=line.indexOf(':');
+      const key=ci>0?line.slice(0,ci).trim().toUpperCase():null;
+      if(key&&keyColors[key]){flush();cur=key;const rest=line.slice(ci+1).trim();if(rest)buf.push(rest);}
+      else buf.push(line);
+    }
+    flush();
+    return sections.map((sec,i)=>{
+      const col=sec.label?(keyColors[sec.label]||'var(--muted)'):'var(--muted)';
+      return(
+        <div key={i} style={{marginBottom:12}}>
+          {sec.label&&<div style={{fontSize:9,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+            letterSpacing:'.14em',color:col,marginBottom:6}}>{sec.label}</div>}
+          {sec.lines.map((line,j)=>{
+            const isBullet=line.startsWith('-')||line.startsWith('•');
+            const txt=isBullet?line.replace(/^[-•]\s*/,''):line;
+            return isBullet
+              ?<div key={j} style={{display:'flex',gap:8,marginBottom:4}}>
+                  <span style={{color:col,fontSize:10,marginTop:3,flexShrink:0}}>→</span>
+                  <span style={{fontSize:13,color:'oklch(0.82 0.005 90)',lineHeight:1.6}}>{txt}</span>
+                </div>
+              :<p key={j} style={{fontSize:13,color:'oklch(0.82 0.005 90)',lineHeight:1.6,marginBottom:4}}>{line}</p>;
+          })}
+        </div>
+      );
+    });
+  }
+
+  return(
+    <div className="slide-down" style={{borderTop:'1px solid oklch(0.22 0.01 255)',
+      padding:'18px 20px',background:'linear-gradient(180deg,oklch(0.155 0.012 255),oklch(0.145 0.010 255))'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,
+            letterSpacing:'.06em',color:c.pill}}>LOG SESSION FEEDBACK</div>
+          <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>
+            {result?'Coaching response saved':'Your response will adapt the next session'}
+          </div>
+        </div>
+        <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',
+          color:'var(--muted)',fontSize:18,padding:4,lineHeight:1}}>✕</button>
+      </div>
+
+      {escalationLevel>=2&&!result&&(
+        <div style={{marginBottom:14,padding:'10px 12px',background:'oklch(0.65 0.18 25/0.12)',
+          borderRadius:8,border:'1px solid oklch(0.65 0.18 25/0.4)'}}>
+          <div style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+            letterSpacing:'.12em',color:'oklch(0.65 0.18 25)',marginBottom:4}}>
+            ⚠ {escalationLevel>=3?'THIRD':'SECOND'} CONSECUTIVE HIGH-FATIGUE WEEK
+          </div>
+          <div style={{fontSize:12,color:'oklch(0.75 0.005 90)',lineHeight:1.5}}>
+            {escalationLevel>=3
+              ?"Coach will recommend dropping back to the previous block's Build week."
+              :"Coach will recommend an unplanned deload regardless of block position."}
+          </div>
+        </div>
+      )}
+
+      {!result?(
+        <div style={{display:'grid',gap:12}}>
+          {[['TIME TAKEN','e.g. 20 minutes, ran 2 min over…',time,setTime,'text'],
+            ['SORENESS','e.g. mild glutes, none in quads…',soreness,setSore,'text'],
+            ['RIDE IMPACT','e.g. next-day intervals felt fine, legs heavy…',ride,setRide,'text']
+          ].map(([lbl,ph,val,set,type])=>(
+            <div key={lbl}>
+              <label style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+                letterSpacing:'.12em',color:'var(--muted)',display:'block',marginBottom:6}}>{lbl}</label>
+              <input type={type} value={val} onChange={e=>set(e.target.value)} placeholder={ph} style={inpStyle}/>
+            </div>
+          ))}
+          <div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <label style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+                letterSpacing:'.12em',color:'var(--muted)'}}>PERCEIVED EFFORT</label>
+              <span style={{fontFamily:"'DM Mono',monospace",fontSize:13,color:c.pill,fontWeight:500}}>RPE {rpe}</span>
+            </div>
+            <input type="range" min={1} max={10} step={1} value={rpe} onChange={e=>setRpe(Number(e.target.value))}/>
+            <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}>
+              <span style={{fontSize:10,color:'var(--muted)',fontFamily:"'DM Mono',monospace"}}>1 easy</span>
+              <span style={{fontSize:10,color:'var(--muted)',fontFamily:"'DM Mono',monospace"}}>10 max</span>
+            </div>
+          </div>
+          <button onClick={handleSubmit} disabled={loading||(!time&&!soreness&&!ride)} style={{
+            marginTop:4,padding:'12px 0',borderRadius:10,border:'none',cursor:'pointer',
+            background:(!time&&!soreness&&!ride)?'oklch(0.20 0.01 255)':c.pill,
+            color:(!time&&!soreness&&!ride)?'var(--muted)':c.text,
+            fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,letterSpacing:'.08em',
+            display:'flex',alignItems:'center',justifyContent:'center',gap:10,transition:'all .2s'}}>
+            {loading?<><span className="spinner"/>ANALYSING…</>:'GET COACH ADAPTATION →'}
+          </button>
+        </div>
+      ):(
+        <div className="fade-in">
+          <div style={{background:'oklch(0.13 0.012 255)',borderRadius:10,
+            border:`1px solid ${c.border}`,padding:16,marginBottom:14,boxShadow:`0 0 24px ${c.glow}`}}>
+            <div style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+              letterSpacing:'.14em',color:c.pill,marginBottom:14}}>COACH RESPONSE</div>
+            {renderResult(result)}
+          </div>
+          <button onClick={()=>{setResult(null);onSave(null);}}
+            style={{background:'none',border:'1px solid oklch(0.26 0.01 255)',borderRadius:8,
+              padding:'8px 16px',color:'var(--muted)',cursor:'pointer',fontSize:12}}>
+            ← Log again
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── WeekCard ───────────────────────────────────────────────────── */
+function WeekCard({blockId,weekData,isOpen,onToggle,isComplete,onToggleComplete,
+                   isMissed,onToggleMissed,feedbacks,onSaveFeedback,escalationLevel}){
+  const [showFeedback,setShowFeedback] = useState(false);
+  const [showQuick,setShowQuick]       = useState(false);
+  const [activeSession,setSession]     = useState(0); // for Block 3
+  const c = CM[weekData.color]||CM.accent;
+  const isB3 = !!weekData.sessions;
+  const isB2 = !!weekData.micro;
+  const hasFeedback = !!feedbacks[bc(blockId,weekData.n)]?.result
+    || (isB3 && (!!feedbacks[bc(blockId,weekData.n,'-A')]?.result || !!feedbacks[bc(blockId,weekData.n,'-B')]?.result));
+
+  const getBlocks = (sessIdx=0) =>
+    isB3 ? weekData.sessions[sessIdx].blocks : weekData.blocks;
+
+  const getNextBlocks = (sessIdx=0) => {
+    const nextWeek = window.SC_BLOCKS[blockId-1]?.weeks.find(w=>w.n===weekData.n+1);
+    if(!nextWeek) return null;
+    return isB3 ? nextWeek.sessions?.[sessIdx]?.blocks : nextWeek.blocks;
+  };
+
+  const fbKey = isB3
+    ? bc(blockId, weekData.n, activeSession===0?'-A':'-B')
+    : bc(blockId, weekData.n);
+
+  return(
+    <div style={{
+      background:isOpen?'oklch(0.155 0.012 255)':'oklch(0.145 0.010 255)',
+      border:`1px solid ${isOpen?c.border:'oklch(0.24 0.01 255)'}`,
+      borderRadius:14,overflow:'hidden',
+      transition:'border-color .25s,background .25s',
+      boxShadow:isOpen?`0 0 32px ${c.glow}`:'none',
+      opacity:isMissed?.8:1,
+    }}>
+      {/* Header */}
+      <button onClick={onToggle} style={{width:'100%',background:'none',border:'none',cursor:'pointer',
+        color:'inherit',display:'flex',alignItems:'center',gap:16,padding:'18px 20px',textAlign:'left'}}>
+        <div style={{width:46,height:46,borderRadius:10,flexShrink:0,
+          background:isOpen?c.pill:'oklch(0.20 0.01 255)',
+          display:'flex',alignItems:'center',justifyContent:'center',transition:'background .25s'}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,
+            color:isOpen?c.text:'var(--muted)'}}>W{weekData.n}</span>
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:22,letterSpacing:'.02em'}}>
+              {weekData.theme.toUpperCase()}
+            </span>
+            <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,fontWeight:500,
+              background:isOpen?c.pill+'22':'oklch(0.20 0.01 255)',
+              color:isOpen?c.pill:'var(--muted)',padding:'2px 8px',borderRadius:4,
+              border:`1px solid ${isOpen?c.pill+'44':'oklch(0.26 0.01 255)'}`,transition:'all .2s'}}>
+              RPE {weekData.rpe}
+            </span>
+            {hasFeedback&&<span style={{fontFamily:"'DM Mono',monospace",fontSize:9,
+              background:'oklch(0.70 0.15 290/0.15)',color:'oklch(0.70 0.15 290)',
+              padding:'2px 7px',borderRadius:4,border:'1px solid oklch(0.70 0.15 290/0.35)'}}>ADAPTED</span>}
+            {isMissed&&<span style={{fontFamily:"'DM Mono',monospace",fontSize:9,
+              background:'oklch(0.65 0.18 25/0.15)',color:'oklch(0.65 0.18 25)',
+              padding:'2px 7px',borderRadius:4,border:'1px solid oklch(0.65 0.18 25/0.35)'}}>MISSED</span>}
+          </div>
+          <RPEBar rpe={weekData.rpe}/>
+        </div>
+        <span style={{fontSize:18,color:isOpen?c.pill:'var(--muted)',
+          transform:isOpen?'rotate(180deg)':'none',transition:'transform .25s,color .25s',flexShrink:0}}>▾</span>
+      </button>
+
+      {isOpen&&(
+        <div className="slide-down">
+          {/* Missed week banner */}
+          {isMissed&&(
+            <div style={{margin:'0 20px 16px',padding:'10px 14px',borderRadius:8,
+              background:'oklch(0.65 0.18 25/0.10)',border:'1px solid oklch(0.65 0.18 25/0.35)'}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,
+                letterSpacing:'.10em',color:'oklch(0.65 0.18 25)',marginBottom:4}}>MISSED WEEK PROTOCOL</div>
+              <div style={{fontSize:12,color:'oklch(0.75 0.005 90)',lineHeight:1.55}}>
+                Repeat this week before advancing to Week {weekData.n+1}. Do not skip ahead.
+              </div>
+            </div>
+          )}
+
+          {/* Block 3: session tabs */}
+          {isB3&&(
+            <div style={{padding:'0 20px 12px',display:'flex',gap:8}}>
+              {weekData.sessions.map((s,i)=>(
+                <button key={i} onClick={()=>{setSession(i);setShowFeedback(false);setShowQuick(false);}} style={{
+                  flex:1,padding:'8px 0',borderRadius:9,border:'none',cursor:'pointer',
+                  background:activeSession===i?c.pill+'22':'oklch(0.20 0.01 255)',
+                  color:activeSession===i?c.pill:'var(--muted)',
+                  fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,letterSpacing:'.06em',
+                  border:`1px solid ${activeSession===i?c.pill+'44':'oklch(0.26 0.01 255)'}`,transition:'all .15s'}}>
+                  {s.icon} {s.label.split('—')[1]?.trim()||s.label} · {s.dur}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Session blocks */}
+          <div style={{padding:'0 20px 4px'}}>
+            <div style={{margin:'4px 0 18px',padding:'10px 14px',
+              background:c.glow,border:`1px solid ${c.border}`,borderRadius:8,
+              fontSize:13,color:'oklch(0.78 0.005 90)',lineHeight:1.6}}>
+              <span style={{color:c.pill,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+                fontSize:11,letterSpacing:'.10em',marginRight:6}}>COACH NOTE</span>
+              {weekData.note}
+            </div>
+            {showQuick&&!isB3
+              ? <QuickSession blocks={getBlocks()}/>
+              : getBlocks(activeSession).map((b,i)=><BlockSection key={i} block={b}/>)
+            }
+          </div>
+
+          {/* Block 2 micro-sessions */}
+          {isB2&&<MicroSession options={weekData.micro} note={window.SC_BLOCKS[blockId-1]?.microNote}/>}
+
+          {/* Action bar */}
+          <div style={{borderTop:'1px solid oklch(0.20 0.01 255)',
+            padding:'12px 20px',display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+            <button onClick={e=>{e.stopPropagation();onToggleComplete();}} style={{
+              flex:1,minWidth:90,padding:'9px 0',borderRadius:9,border:'none',cursor:'pointer',
+              background:isComplete?c.pill:'oklch(0.22 0.01 255)',
+              color:isComplete?c.text:'var(--muted)',
+              fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,letterSpacing:'.08em',transition:'all .2s'}}>
+              {isComplete?'✓ DONE':'MARK DONE'}
+            </button>
+            <button onClick={e=>{e.stopPropagation();onToggleMissed();}} style={{
+              flex:1,minWidth:90,padding:'9px 0',borderRadius:9,cursor:'pointer',
+              background:isMissed?'oklch(0.65 0.18 25/0.15)':'oklch(0.18 0.01 255)',
+              color:isMissed?'oklch(0.65 0.18 25)':'var(--muted)',
+              border:`1px solid ${isMissed?'oklch(0.65 0.18 25/0.4)':'oklch(0.24 0.01 255)'}`,
+              fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,letterSpacing:'.08em',transition:'all .2s'}}>
+              {isMissed?'⚠ MISSED':'MISSED?'}
+            </button>
+            {!isB3&&(
+              <button onClick={e=>{e.stopPropagation();setShowQuick(q=>!q);setShowFeedback(false);}} style={{
+                flex:1,minWidth:90,padding:'9px 0',borderRadius:9,cursor:'pointer',
+                background:showQuick?'oklch(0.78 0.16 60/0.15)':'oklch(0.18 0.01 255)',
+                color:showQuick?'oklch(0.78 0.16 60)':'var(--muted)',
+                border:`1px solid ${showQuick?'oklch(0.78 0.16 60/0.4)':'oklch(0.24 0.01 255)'}`,
+                fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,letterSpacing:'.08em',transition:'all .2s'}}>
+                ⚡ QUICK
+              </button>
+            )}
+            <button onClick={e=>{e.stopPropagation();setShowFeedback(f=>!f);setShowQuick(false);}} style={{
+              flex:1,minWidth:100,padding:'9px 0',borderRadius:9,cursor:'pointer',
+              background:showFeedback?'oklch(0.70 0.15 290/0.15)':'oklch(0.18 0.01 255)',
+              color:showFeedback?'oklch(0.70 0.15 290)':'var(--muted)',
+              border:`1px solid ${showFeedback?'oklch(0.70 0.15 290/0.4)':'oklch(0.24 0.01 255)'}`,
+              fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,letterSpacing:'.08em',transition:'all .2s'}}>
+              {hasFeedback?'VIEW ADAPT':'LOG FEEDBACK'}
+            </button>
+          </div>
+
+          {showFeedback&&(
+            <FeedbackPanel
+              blockId={blockId} weekN={weekData.n}
+              sessionLabel={isB3?weekData.sessions[activeSession].label:null}
+              blocks={getBlocks(activeSession)}
+              nextBlocks={getNextBlocks(activeSession)}
+              nextLabel={isB3?weekData.sessions[activeSession].label:null}
+              saved={feedbacks[fbKey]||null}
+              onSave={data=>{ onSaveFeedback(fbKey,data); if(!data)setShowFeedback(false); }}
+              onClose={()=>setShowFeedback(false)}
+              escalationLevel={escalationLevel}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── App ────────────────────────────────────────────────────────── */
+function App(){
+  const [activeBlock,setActiveBlock] = useState(0);
+  const [openWeek,setOpenWeek]       = useState(null);
+  const [env,setEnv]                 = useState(()=>localStorage.getItem('sc_env')||'home');
+  const [cyclingPhase,setCyclingPhase]= useState(()=>localStorage.getItem('sc_phase')||null);
+  const [completed,setCompleted]     = useState(()=>ls.get('sc_completed',{}));
+  const [missed,setMissed]           = useState(()=>ls.get('sc_missed',{}));
+  const [feedbacks,setFeedbacks]     = useState(()=>ls.get('sc_feedbacks',{}));
+
+  const block = window.SC_BLOCKS[activeBlock];
+
+  const toggleComplete = useCallback((key)=>{
+    setCompleted(p=>{const n={...p,[key]:!p[key]};ls.set('sc_completed',n);return n;});
+  },[]);
+  const toggleMissed = useCallback((key)=>{
+    setMissed(p=>{const n={...p,[key]:!p[key]};ls.set('sc_missed',n);return n;});
+  },[]);
+  const saveFeedback = useCallback((key,data)=>{
+    setFeedbacks(p=>{const n=data?{...p,[key]:data}:Object.fromEntries(Object.entries(p).filter(([k])=>k!==key));
+      ls.set('sc_feedbacks',n);return n;});
+  },[]);
+
+  const escalationLevel = useMemo(()=>window.SC_getEscalationLevel(feedbacks,block.id),[feedbacks,block.id]);
+
+  const blockDone = block.weeks.filter(w=>completed[bc(block.id,w.n)]).length;
+  const progress  = (blockDone/4)*100;
+
+  return(
+    <EnvCtx.Provider value={env}>
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+
+      {/* ── Header ── */}
+      <header style={{borderBottom:'1px solid oklch(0.22 0.01 255)',padding:'16px 24px',
+        position:'sticky',top:0,zIndex:10,background:'oklch(0.11 0.012 255/0.96)',backdropFilter:'blur(12px)'}}>
+        <div style={{maxWidth:700,margin:'0 auto'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,marginBottom:14}}>
+            <div>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,
+                letterSpacing:'.18em',color:'var(--accent)',background:'var(--accent-dim)',
+                padding:'2px 8px',borderRadius:4,border:'1px solid oklch(0.82 0.20 128/0.3)'}}>
+                CYCLIST S&C
+              </span>
+              <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,
+                fontSize:'clamp(22px,5vw,34px)',letterSpacing:'.01em',marginTop:4,lineHeight:1}}>
+                {block.label} <span style={{color:'var(--accent)'}}>— {block.subtitle}</span>
+              </h1>
+            </div>
+            {/* Progress ring */}
+            <div style={{textAlign:'center',flexShrink:0}}>
+              <div style={{width:48,height:48,borderRadius:'50%',
+                background:`conic-gradient(var(--accent) ${progress}%, oklch(0.22 0.01 255) 0)`,
+                display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{width:36,height:36,borderRadius:'50%',background:'oklch(0.11 0.012 255)',
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,lineHeight:1}}>
+                    {blockDone}/4
+                  </span>
+                </div>
+              </div>
+              <div style={{fontSize:9,color:'var(--muted)',marginTop:3,fontFamily:"'DM Mono',monospace"}}>DONE</div>
+            </div>
+          </div>
+          {/* Block tabs */}
+          <div style={{display:'flex',gap:6}}>
+            {window.SC_BLOCKS.map((b,i)=>{
+              const done=b.weeks.filter(w=>completed[bc(b.id,w.n)]).length;
+              const allDone=done===4;
+              return(
+                <button key={i} onClick={()=>{setActiveBlock(i);setOpenWeek(null);}} style={{
+                  flex:1,padding:'7px 0',borderRadius:9,border:'none',cursor:'pointer',
+                  background:activeBlock===i?'oklch(0.82 0.20 128/0.15)':'oklch(0.17 0.01 255)',
+                  color:activeBlock===i?'var(--accent)':'var(--muted)',
+                  fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,letterSpacing:'.06em',
+                  border:`1px solid ${activeBlock===i?'oklch(0.82 0.20 128/0.4)':'oklch(0.24 0.01 255)'}`,
+                  transition:'all .2s',position:'relative'}}>
+                  {b.label.replace('BLOCK ','')} {allDone?'✓':''}
+                  <div style={{fontSize:9,color:activeBlock===i?'var(--accent)':'oklch(0.40 0.01 255)',
+                    fontFamily:"'DM Mono',monospace",marginTop:1,fontWeight:400}}>
+                    {b.weekRange}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {/* Environment toggle */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:10}}>
+            <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:'var(--muted)',letterSpacing:'.06em'}}>ENVIRONMENT</span>
+            <div style={{display:'flex',gap:4}}>
+              {['home','gym'].map(e=>(
+                <button key={e} onClick={()=>{setEnv(e);localStorage.setItem('sc_env',e);}} style={{
+                  padding:'4px 14px',borderRadius:6,border:'none',cursor:'pointer',
+                  background:env===e?(e==='gym'?'oklch(0.70 0.15 290/0.20)':'var(--accent-dim)'):'oklch(0.18 0.01 255)',
+                  color:env===e?(e==='gym'?'oklch(0.70 0.15 290)':'var(--accent)'):'var(--muted)',
+                  fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,letterSpacing:'.10em',
+                  border:`1px solid ${env===e?(e==='gym'?'oklch(0.70 0.15 290/0.40)':'oklch(0.82 0.20 128/0.40)'):'oklch(0.24 0.01 255)'}`,
+                  transition:'all .15s'}}>
+                  {e.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Phase selector — Performance Mode (Block 4+) only */}
+          {activeBlock>=3&&(
+            <div style={{marginTop:8}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:5}}>
+                <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:'oklch(0.72 0.18 200)',letterSpacing:'.06em'}}>CYCLING PHASE</span>
+                {!cyclingPhase&&<span style={{fontSize:10,color:'oklch(0.65 0.18 25)',fontFamily:"'DM Mono',monospace"}}>select to enable phase coaching</span>}
+              </div>
+              <div style={{display:'flex',gap:4}}>
+                {[['base','Base'],['build','Build'],['specialty','Specialty'],['race','Race'],['transition','Trans.']].map(([k,lbl])=>(
+                  <button key={k} onClick={()=>{setCyclingPhase(k);localStorage.setItem('sc_phase',k);}} style={{
+                    flex:1,padding:'5px 2px',borderRadius:6,border:'none',cursor:'pointer',
+                    background:cyclingPhase===k?'oklch(0.72 0.18 200/0.20)':'oklch(0.18 0.01 255)',
+                    color:cyclingPhase===k?'oklch(0.72 0.18 200)':'var(--muted)',
+                    fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,letterSpacing:'.06em',
+                    border:`1px solid ${cyclingPhase===k?'oklch(0.72 0.18 200/0.45)':'oklch(0.24 0.01 255)'}`,
+                    transition:'all .15s'}}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <main style={{flex:1,padding:'20px 24px 40px',maxWidth:700,margin:'0 auto',width:'100%'}}>
+
+        {/* Block info card */}
+        <div style={{background:'oklch(0.16 0.010 255)',borderRadius:12,
+          border:'1px solid oklch(0.24 0.01 255)',padding:'14px 18px',marginBottom:16}}>
+          <div style={{display:'grid',gap:10}}>
+            <div>
+              <div style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+                letterSpacing:'.15em',color:'var(--muted)',marginBottom:5}}>GOAL</div>
+              <p style={{fontSize:13,color:'oklch(0.78 0.005 90)',lineHeight:1.65}}>{block.goal}</p>
+            </div>
+            <div style={{height:1,background:'oklch(0.22 0.01 255)'}}/>
+          {/* Mode + phase indicator */}
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:'.14em',
+              color:activeBlock>=3?'oklch(0.72 0.18 200)':'oklch(0.78 0.16 60)',
+              background:activeBlock>=3?'oklch(0.72 0.18 200/0.12)':'oklch(0.78 0.16 60/0.12)',
+              padding:'3px 10px',borderRadius:4,
+              border:`1px solid ${activeBlock>=3?'oklch(0.72 0.18 200/0.35)':'oklch(0.78 0.16 60/0.35)'}`}}>
+              {activeBlock>=3?'PERFORMANCE MODE':'REBUILD MODE'}
+            </span>
+            {activeBlock>=3&&cyclingPhase&&(
+              <span style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:'.12em',
+                color:'oklch(0.72 0.18 200)',background:'oklch(0.72 0.18 200/0.08)',
+                padding:'3px 10px',borderRadius:4,border:'1px solid oklch(0.72 0.18 200/0.25)'}}>
+                {cyclingPhase.toUpperCase()} PHASE
+              </span>
+            )}
+          </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              {[
+                ['SESSION',`${block.sessionDuration} · ${block.sessionsPerWeek}×/week`],
+                ['STRUCTURE',block.structure],
+                ['EQUIPMENT',block.equipment],
+                ['SCHEDULING',block.scheduling],
+              ].map(([lbl,val])=>(
+                <div key={lbl}>
+                  <div style={{fontSize:9,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,
+                    letterSpacing:'.12em',color:'var(--muted)',marginBottom:4}}>{lbl}</div>
+                  <div style={{fontSize:12,color:'oklch(0.68 0.005 90)',lineHeight:1.5}}>{val}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Escalation banner */}
+        {escalationLevel>=2&&(
+          <div className="fade-in" style={{marginBottom:16,padding:'12px 16px',borderRadius:10,
+            background:'oklch(0.65 0.18 25/0.10)',border:'1px solid oklch(0.65 0.18 25/0.4)'}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,
+              letterSpacing:'.10em',color:'oklch(0.65 0.18 25)',marginBottom:4}}>
+              ⚠ {escalationLevel>=3?'THREE':'TWO'} CONSECUTIVE HIGH-FATIGUE SESSIONS
+            </div>
+            <div style={{fontSize:13,color:'oklch(0.78 0.005 90)',lineHeight:1.55}}>
+              {escalationLevel>=3
+                ?"Log feedback on the latest session — coach will recommend dropping back to the previous block's Build week."
+                :"Log feedback on the latest session — coach will recommend an unplanned deload."}
+            </div>
+          </div>
+        )}
+
+        {/* Week strip */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
+          {block.weeks.map((w,i)=>{
+            const c=CM[w.color];
+            const done=completed[bc(block.id,w.n)];
+            const miss=missed[bc(block.id,w.n)];
+            return(
+              <div key={i} onClick={()=>toggleComplete(bc(block.id,w.n))} style={{
+                background:done?c.pill:'oklch(0.16 0.01 255)',borderRadius:10,padding:'10px 12px',
+                border:`1px solid ${done?c.pill:'oklch(0.24 0.01 255)'}`,cursor:'pointer',transition:'all .2s'}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,
+                  color:done?c.text:c.pill}}>W{w.n}</div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:10,
+                  letterSpacing:'.08em',color:done?c.text+'cc':'var(--muted)'}}>{w.theme.toUpperCase()}</div>
+                <div style={{fontSize:9,fontFamily:"'DM Mono',monospace",marginTop:2,
+                  color:done?c.text+'99':'oklch(0.38 0.01 255)'}}>
+                  {miss?'⚠ missed':done?'✓ done':'tap to mark'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Week cards */}
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {block.weeks.map((w,i)=>(
+            <WeekCard
+              key={i} blockId={block.id} weekData={w}
+              isOpen={openWeek===i} onToggle={()=>setOpenWeek(openWeek===i?null:i)}
+              isComplete={!!completed[bc(block.id,w.n)]}
+              onToggleComplete={()=>toggleComplete(bc(block.id,w.n))}
+              isMissed={!!missed[bc(block.id,w.n)]}
+              onToggleMissed={()=>toggleMissed(bc(block.id,w.n))}
+              feedbacks={feedbacks}
+              onSaveFeedback={saveFeedback}
+              escalationLevel={escalationLevel}
+            />
+          ))}
+        </div>
+
+        {/* Next block teaser */}
+        {activeBlock<window.SC_BLOCKS.length-1&&(
+          <div style={{marginTop:20,borderRadius:12,padding:'14px 18px',
+            background:'oklch(0.14 0.010 255)',border:'1px dashed oklch(0.28 0.01 255)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <div style={{width:34,height:34,borderRadius:8,background:'oklch(0.20 0.01 255)',
+                display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'var(--muted)'}}>→</div>
+              <div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,
+                  letterSpacing:'.05em',color:'var(--muted)'}}>
+                  {window.SC_BLOCKS[activeBlock+1].label} — {window.SC_BLOCKS[activeBlock+1].subtitle}
+                </div>
+                <div style={{fontSize:12,color:'oklch(0.42 0.01 255)',marginTop:2}}>
+                  {window.SC_BLOCKS[activeBlock+1].sessionDuration} · {window.SC_BLOCKS[activeBlock+1].weekRange} · complete all 4 weeks to unlock
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+    </div>
+    </EnvCtx.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
