@@ -36,7 +36,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.verifyOtp({
       email,
       token,
-      type: 'email',
+      type: 'magiclink',
     })
     if (error) setError(error.message)
     else router.push('/')
