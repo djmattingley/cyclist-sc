@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { SC_BLOCKS } from '@/lib/program-data'
 import { SC_COLOR_MAP, bc } from '@/lib/utils'
-import type { WeekData, BlockSectionData, FeedbackData, CyclingPhase } from '@/lib/types'
+import type { WeekData, BlockSectionData, ExerciseLogs, FeedbackData, CyclingPhase, SetLog } from '@/lib/types'
 import RPEBar from './RPEBar'
 import BlockSection from './BlockSection'
 import QuickSession from './QuickSession'
@@ -21,6 +21,8 @@ interface Props {
   onToggleMissed: () => void
   feedbacks: Record<string, FeedbackData>
   onSaveFeedback: (key: string, data: FeedbackData | null) => void
+  exerciseLogs: Record<string, ExerciseLogs>
+  onSaveExerciseLog: (sessionKey: string, exKey: string, sets: SetLog[]) => void
   escalationLevel: number
   cyclingPhase: CyclingPhase | null
 }
@@ -29,7 +31,9 @@ export default function WeekCard({
   blockId, weekData, isOpen, onToggle,
   isComplete, onToggleComplete,
   isMissed, onToggleMissed,
-  feedbacks, onSaveFeedback, escalationLevel, cyclingPhase,
+  feedbacks, onSaveFeedback,
+  exerciseLogs, onSaveExerciseLog,
+  escalationLevel, cyclingPhase,
 }: Props) {
   const [showFeedback, setShowFeedback] = useState(false)
   const [showQuick, setShowQuick]       = useState(false)
@@ -139,7 +143,15 @@ export default function WeekCard({
             </div>
             {showQuick && !isMultiSession
               ? <QuickSession blocks={getBlocks()} />
-              : getBlocks(activeSession).map((b, i) => <BlockSection key={i} block={b} />)
+              : getBlocks(activeSession).map((b, i) => (
+                  <BlockSection
+                    key={i}
+                    block={b}
+                    sessionKey={fbKey}
+                    sessionLogs={exerciseLogs[fbKey] ?? {}}
+                    onLogSets={onSaveExerciseLog}
+                  />
+                ))
             }
           </div>
 

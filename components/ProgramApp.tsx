@@ -7,9 +7,9 @@ import { SC_BLOCKS } from '@/lib/program-data'
 import { EnvCtx } from './EnvCtx'
 import {
   bc, getEscalationLevel, parseKey,
-  progressToCompleted, progressToMissed, progressToFeedbacks,
+  progressToCompleted, progressToMissed, progressToFeedbacks, progressToExerciseLogs,
 } from '@/lib/utils'
-import type { Environment, CyclingPhase, FeedbackData, UserProgress, UserSettings } from '@/lib/types'
+import type { Environment, CyclingPhase, ExerciseLogs, FeedbackData, SetLog, UserProgress, UserSettings } from '@/lib/types'
 import Header from './Header'
 import BlockInfoCard from './BlockInfoCard'
 import EscalationBanner from './EscalationBanner'
@@ -29,13 +29,14 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
   const [openWeek, setOpenWeek]       = useState<number | null>(null)
   const [env, setEnv]                 = useState<Environment>(initialSettings?.env ?? 'home')
   const [cyclingPhase, setCyclingPhase] = useState<CyclingPhase | null>(initialSettings?.cycling_phase ?? null)
-  const [completed, setCompleted]     = useState<Record<string, boolean>>(() => progressToCompleted(initialProgress))
-  const [missed, setMissed]           = useState<Record<string, boolean>>(() => progressToMissed(initialProgress))
-  const [feedbacks, setFeedbacks]     = useState<Record<string, FeedbackData>>(() => progressToFeedbacks(initialProgress))
+  const [completed, setCompleted]         = useState<Record<string, boolean>>(() => progressToCompleted(initialProgress))
+  const [missed, setMissed]               = useState<Record<string, boolean>>(() => progressToMissed(initialProgress))
+  const [feedbacks, setFeedbacks]         = useState<Record<string, FeedbackData>>(() => progressToFeedbacks(initialProgress))
+  const [exerciseLogs, setExerciseLogs]   = useState<Record<string, ExerciseLogs>>(() => progressToExerciseLogs(initialProgress))
 
   const block = SC_BLOCKS[activeBlock]
 
-  async function upsertProgress(key: string, data: Partial<{ completed: boolean; missed: boolean; feedback: FeedbackData | null }>) {
+  async function upsertProgress(key: string, data: Partial<{ completed: boolean; missed: boolean; feedback: FeedbackData | null; exercise_logs: ExerciseLogs }>) {
     const { blockId, weekN, sessionLabel } = parseKey(key)
     await supabase.from('user_progress').upsert({
       user_id: user.id,
@@ -77,6 +78,15 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
         ? { ...prev, [key]: data }
         : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== key))
       upsertProgress(key, { feedback: data })
+      return next
+    })
+  }, [])
+
+  const saveExerciseLog = useCallback((sessionKey: string, exKey: string, sets: SetLog[]) => {
+    setExerciseLogs(prev => {
+      const sessionLogs: ExerciseLogs = { ...(prev[sessionKey] ?? {}), [exKey]: sets }
+      const next = { ...prev, [sessionKey]: sessionLogs }
+      upsertProgress(sessionKey, { exercise_logs: sessionLogs })
       return next
     })
   }, [])
@@ -132,6 +142,8 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
                 onToggleMissed={() => toggleMissed(bc(block.id, w.n))}
                 feedbacks={feedbacks}
                 onSaveFeedback={saveFeedback}
+                exerciseLogs={exerciseLogs}
+                onSaveExerciseLog={saveExerciseLog}
                 escalationLevel={escalationLevel}
                 cyclingPhase={cyclingPhase}
               />

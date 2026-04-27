@@ -1,4 +1,4 @@
-import type { FeedbackData, UserProgress, UserSettings } from './types'
+import type { ExerciseLogs, FeedbackData, UserProgress, UserSettings } from './types'
 
 export const SC_COLOR_MAP = {
   accent: { pill: '#a3e635', text: '#0d1a00', glow: 'oklch(0.82 0.20 128/0.18)', border: 'oklch(0.82 0.20 128/0.35)' },
@@ -82,6 +82,16 @@ export function progressToFeedbacks(records: UserProgress[]): Record<string, Fee
     if (!r.feedback) continue
     const suffix = r.session_label ? `-${r.session_label}` : ''
     result[`b${r.block_id}-w${r.week_n}${suffix}`] = r.feedback
+  }
+  return result
+}
+
+export function progressToExerciseLogs(records: UserProgress[]): Record<string, ExerciseLogs> {
+  const result: Record<string, ExerciseLogs> = {}
+  for (const r of records) {
+    if (!r.exercise_logs || Object.keys(r.exercise_logs).length === 0) continue
+    const suffix = r.session_label ? `-${r.session_label}` : ''
+    result[`b${r.block_id}-w${r.week_n}${suffix}`] = r.exercise_logs
   }
   return result
 }

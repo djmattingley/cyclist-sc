@@ -1,10 +1,17 @@
 'use client'
 
 import { SC_CAT_COLORS } from '@/lib/utils'
-import type { BlockSectionData } from '@/lib/types'
+import type { BlockSectionData, ExerciseLogs, SetLog } from '@/lib/types'
 import ExerciseCard from './ExerciseCard'
 
-export default function BlockSection({ block }: { block: BlockSectionData }) {
+interface Props {
+  block: BlockSectionData
+  sessionKey?: string
+  sessionLogs?: ExerciseLogs
+  onLogSets?: (sessionKey: string, exKey: string, sets: SetLog[]) => void
+}
+
+export default function BlockSection({ block, sessionKey, sessionLogs, onLogSets }: Props) {
   const c = SC_CAT_COLORS[block.cat] ?? SC_CAT_COLORS.core
   return (
     <div style={{ marginBottom: 16 }}>
@@ -17,7 +24,15 @@ export default function BlockSection({ block }: { block: BlockSectionData }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {block.exercises.map((e, i) => (
-          <ExerciseCard key={i} exKey={e.ex} sets={e.sets} reps={e.reps} note={e.note} />
+          <ExerciseCard
+            key={i}
+            exKey={e.ex}
+            sets={e.sets}
+            reps={e.reps}
+            note={e.note}
+            loggedSets={sessionLogs?.[e.ex]}
+            onLogSets={sessionKey && onLogSets ? (sets) => onLogSets(sessionKey, e.ex, sets) : undefined}
+          />
         ))}
       </div>
     </div>

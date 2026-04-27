@@ -72,6 +72,13 @@ export interface BlockData {
   microNote?: string
 }
 
+export interface SetLog {
+  kg: number | null
+  reps: number
+}
+
+export type ExerciseLogs = Record<string, SetLog[]>
+
 export interface FeedbackData {
   time: string
   soreness: string
@@ -98,6 +105,7 @@ export interface UserProgress {
   completed: boolean
   missed: boolean
   feedback: FeedbackData | null
+  exercise_logs: ExerciseLogs | null
   created_at: string
   updated_at: string
 }
