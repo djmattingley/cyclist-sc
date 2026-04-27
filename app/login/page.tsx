@@ -1,21 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+
+function CallbackError({ onError }: { onError: (msg: string) => void }) {
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('error') === 'auth_callback_failed') {
+      onError('Magic link expired or already used — please request a new one.')
+    }
+  }, [searchParams, onError])
+  return null
+}
 
 export default function LoginPage() {
   const [email, setEmail]     = useState('')
   const [sent, setSent]       = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    if (searchParams.get('error') === 'auth_callback_failed') {
-      setError('Magic link expired or already used — please request a new one.')
-    }
-  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,6 +37,9 @@ export default function LoginPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--bg)' }}>
+      <Suspense>
+        <CallbackError onError={setError} />
+      </Suspense>
       <div style={{ width: '100%', maxWidth: 400 }}>
         <div style={{ marginBottom: 32, textAlign: 'center' }}>
           <span style={{
