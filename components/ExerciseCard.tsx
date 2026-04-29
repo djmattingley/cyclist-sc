@@ -54,7 +54,11 @@ export default function ExerciseCard({ exKey, sets, reps, note, loggedSets, onLo
   const setCount = parseSetCount(sets)
   const prescribedReps = parseReps(reps)
   const isMobility = setCount === 0
-  const showKg = ex.cat === 'lower' || ex.cat === 'upper'
+  const NO_KG = new Set(['bandPullApart', 'faceYTW', 'inclineBenchYTW', 'cableFacePull'])
+  const LOADED_CORE = new Set(['farmerCarry', 'trapBarCarry'])
+  const showKg =
+    ((ex.cat === 'lower' || ex.cat === 'upper') && !NO_KG.has(resolvedKey)) ||
+    LOADED_CORE.has(resolvedKey)
 
   const [localSets, setLocalSets] = useState<SetLog[]>(() => {
     if (loggedSets && loggedSets.length > 0) return loggedSets

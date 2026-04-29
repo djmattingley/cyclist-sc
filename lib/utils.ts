@@ -1,4 +1,4 @@
-import type { ExerciseLogs, FeedbackData, UserProgress, UserSettings } from './types'
+import type { ExerciseLogs, FeedbackData, UserProgress } from './types'
 
 export const SC_COLOR_MAP = {
   accent: { pill: '#a3e635', text: '#0d1a00', glow: 'oklch(0.82 0.20 128/0.18)', border: 'oklch(0.82 0.20 128/0.35)' },
@@ -36,7 +36,11 @@ export function getEscalationLevel(feedbacks: Record<string, FeedbackData>, bloc
   const prefix = `b${blockId}-`
   const relevant = Object.entries(feedbacks)
     .filter(([k]) => k.startsWith(prefix))
-    .sort(([a], [b]) => b.localeCompare(a))
+    .sort(([a], [b]) => {
+      const nA = parseInt(a.match(/w(\d+)/)?.[1] ?? '0')
+      const nB = parseInt(b.match(/w(\d+)/)?.[1] ?? '0')
+      return nB - nA
+    })
   for (const [, fb] of relevant) {
     if (fb && fb.rpe >= 7) streak++
     else break
@@ -96,10 +100,3 @@ export function progressToExerciseLogs(records: UserProgress[]): Record<string, 
   return result
 }
 
-export function settingsDefaults(s: UserSettings | null): { env: 'home' | 'gym'; cyclingPhase: import('./types').CyclingPhase | null; activeBlock: number } {
-  return {
-    env: s?.env ?? 'home',
-    cyclingPhase: s?.cycling_phase ?? null,
-    activeBlock: s ? s.active_block - 1 : 0,
-  }
-}

@@ -23,9 +23,9 @@ export default function BlockSection({ block, sessionKey, sessionLogs, onLogSets
         <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: 'var(--muted)' }}>{block.dur}</div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {block.exercises.map((e, i) => (
+        {block.exercises.map((e) => (
           <ExerciseCard
-            key={i}
+            key={e.ex}
             exKey={e.ex}
             sets={e.sets}
             reps={e.reps}
