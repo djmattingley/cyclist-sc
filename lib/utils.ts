@@ -22,7 +22,7 @@ export const bc = (blockId: number, weekN: number, suffix = '') =>
   `b${blockId}-w${weekN}${suffix}`
 
 export function parseKey(key: string): { blockId: number; weekN: number; sessionLabel: string | null } {
-  const match = key.match(/^b(\d+)-w(\d+)(-([AB]))?$/)
+  const match = key.match(/^b(\d+)-w(\d+)(-(\w+))?$/)
   if (!match) throw new Error(`Invalid key: ${key}`)
   return {
     blockId: parseInt(match[1]),

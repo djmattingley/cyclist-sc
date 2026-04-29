@@ -105,7 +105,7 @@ export default function WeekCard({
             {hasFeedback && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, background: 'oklch(0.70 0.15 290/0.15)', color: 'oklch(0.70 0.15 290)', padding: '2px 7px', borderRadius: 4, border: '1px solid oklch(0.70 0.15 290/0.35)' }}>ADAPTED</span>}
             {isMissed && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, background: 'oklch(0.65 0.18 25/0.15)', color: 'oklch(0.65 0.18 25)', padding: '2px 7px', borderRadius: 4, border: '1px solid oklch(0.65 0.18 25/0.35)' }}>MISSED</span>}
           </div>
-          <RPEBar rpe={weekData.rpe} />
+          <RPEBar rpe={weekData.rpe} color={c.pill} />
         </div>
         <span style={{ fontSize: 18, color: isOpen ? c.pill : isComplete ? 'oklch(0.82 0.20 128/0.6)' : 'var(--muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .25s,color .25s', flexShrink: 0 }}>▾</span>
       </button>
@@ -159,7 +159,14 @@ export default function WeekCard({
 
           {/* Micro-sessions (Block 2) */}
           {hasMicro && 'micro' in weekData && weekData.micro && (
-            <MicroSession options={weekData.micro} note={microNote} />
+            <MicroSession
+              options={weekData.micro}
+              note={microNote}
+              blockId={blockId}
+              weekN={weekData.n}
+              exerciseLogs={exerciseLogs}
+              onSaveExerciseLog={onSaveExerciseLog}
+            />
           )}
 
           {/* Action bar */}

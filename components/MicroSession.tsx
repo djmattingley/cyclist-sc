@@ -1,17 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import type { MicroOption } from '@/lib/types'
+import { bc } from '@/lib/utils'
+import type { ExerciseLogs, MicroOption, SetLog } from '@/lib/types'
 import ExerciseCard from './ExerciseCard'
 
 interface Props {
   options: MicroOption[]
   note: string
+  blockId: number
+  weekN: number
+  exerciseLogs: Record<string, ExerciseLogs>
+  onSaveExerciseLog: (sessionKey: string, exKey: string, sets: SetLog[]) => void
 }
 
-export default function MicroSession({ options, note }: Props) {
+export default function MicroSession({ options, note, blockId, weekN, exerciseLogs, onSaveExerciseLog }: Props) {
   const [sel, setSel] = useState(0)
   const opt = options[sel]
+  const microKey = bc(blockId, weekN, '-micro')
+  const sessionLogs = exerciseLogs[microKey] ?? {}
 
   return (
     <div style={{ borderTop: '1px solid oklch(0.20 0.01 255)', padding: '14px 20px 20px' }}>
@@ -37,8 +44,16 @@ export default function MicroSession({ options, note }: Props) {
         ))}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {opt.exercises.map((e, i) => (
-          <ExerciseCard key={i} exKey={e.ex} sets={e.sets} reps={e.reps} note={e.note} />
+        {opt.exercises.map((e) => (
+          <ExerciseCard
+            key={e.ex}
+            exKey={e.ex}
+            sets={e.sets}
+            reps={e.reps}
+            note={e.note}
+            loggedSets={sessionLogs[e.ex]}
+            onLogSets={(sets) => onSaveExerciseLog(microKey, e.ex, sets)}
+          />
         ))}
       </div>
     </div>

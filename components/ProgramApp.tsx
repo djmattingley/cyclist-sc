@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { SC_BLOCKS } from '@/lib/program-data'
@@ -34,6 +34,22 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
   const [feedbacks, setFeedbacks]         = useState<Record<string, FeedbackData>>(() => progressToFeedbacks(initialProgress))
   const [exerciseLogs, setExerciseLogs]   = useState<Record<string, ExerciseLogs>>(() => progressToExerciseLogs(initialProgress))
   const [saveError, setSaveError]         = useState(false)
+  const [stale, setStale]                 = useState(false)
+
+  useEffect(() => {
+    const clientBuild = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'dev'
+    if (clientBuild === 'dev') return
+    const check = async () => {
+      try {
+        const res = await fetch('/api/build-id')
+        const { buildId } = await res.json()
+        if (buildId !== clientBuild) setStale(true)
+      } catch { /* ignore */ }
+    }
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
 
   const block = SC_BLOCKS[activeBlock]
 
@@ -122,6 +138,20 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
   return (
     <EnvCtx.Provider value={env}>
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {stale && (
+          <div
+            onClick={() => window.location.reload()}
+            style={{
+              position: 'sticky', top: 0, zIndex: 20, cursor: 'pointer',
+              background: 'oklch(0.72 0.18 200/0.95)', backdropFilter: 'blur(8px)',
+              padding: '10px 24px', textAlign: 'center',
+            }}
+          >
+            <span style={{ fontSize: 13, color: '#fff', fontFamily: "'DM Sans',sans-serif" }}>
+              New version available — tap to refresh
+            </span>
+          </div>
+        )}
         {saveError && (
           <div style={{
             position: 'sticky', top: 0, zIndex: 20,
