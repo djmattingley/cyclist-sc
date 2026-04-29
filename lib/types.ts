@@ -95,6 +95,7 @@ export interface UserSettings {
   cycling_phase: CyclingPhase | null
   active_block: number
   cycling_hours: number | null
+  race_date: string | null
   updated_at: string
 }
 

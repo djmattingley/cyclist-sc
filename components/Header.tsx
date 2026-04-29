@@ -44,6 +44,19 @@ export default function Header({ block, activeBlock, onBlockChange, env, onEnvCh
               {block.label} <span style={{ color: 'var(--accent)' }}>— {block.subtitle}</span>
             </h1>
           </div>
+          {/* Race calendar link */}
+          <a href="/race-calendar" style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+            textDecoration: 'none', flexShrink: 0,
+          }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 9, background: 'oklch(0.18 0.01 255)',
+              border: '1px solid oklch(0.26 0.01 255)', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', fontSize: 16,
+            }}>🗓</div>
+            <span style={{ fontSize: 8, fontFamily: "'DM Mono',monospace", color: 'oklch(0.38 0.01 255)', letterSpacing: '.04em' }}>RACE</span>
+          </a>
+
           {/* Progress ring */}
           <div style={{ textAlign: 'center', flexShrink: 0 }}>
             <div style={{
