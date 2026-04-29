@@ -15,6 +15,7 @@ import BlockInfoCard from './BlockInfoCard'
 import EscalationBanner from './EscalationBanner'
 import WeekStrip from './WeekStrip'
 import WeekCard from './WeekCard'
+import ProgressCard from './ProgressCard'
 
 interface Props {
   user: User
@@ -205,6 +206,7 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
           ) : (
             <>
               <WeekStrip block={block} completed={completed} missed={missed} onToggle={toggleComplete} />
+              <ProgressCard block={block} feedbacks={feedbacks} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {block.weeks.map((w, i) => (
                   <WeekCard
