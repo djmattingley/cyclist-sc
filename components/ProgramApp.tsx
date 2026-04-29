@@ -36,6 +36,8 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
   const [exerciseLogs, setExerciseLogs]   = useState<Record<string, ExerciseLogs>>(() => progressToExerciseLogs(initialProgress))
   const [saveError, setSaveError]         = useState(false)
   const [stale, setStale]                 = useState(false)
+  const [confirmReset, setConfirmReset]   = useState(false)
+  const [resetting, setResetting]         = useState(false)
 
   useEffect(() => {
     const clientBuild = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'dev'
@@ -76,6 +78,21 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
     }, { onConflict: 'user_id' })
     if (error) setSaveError(true)
     else setSaveError(false)
+  }
+
+  async function resetProgress() {
+    setResetting(true)
+    const { error } = await supabase.from('user_progress').delete().eq('user_id', user.id)
+    if (error) { setSaveError(true); setResetting(false); setConfirmReset(false); return }
+    setCompleted({})
+    setMissed({})
+    setFeedbacks({})
+    setExerciseLogs({})
+    setActiveBlock(0)
+    setOpenWeek(null)
+    await saveSettings({ active_block: 1 })
+    setResetting(false)
+    setConfirmReset(false)
   }
 
   const toggleComplete = useCallback((key: string) => {
@@ -247,6 +264,39 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
               </div>
             </div>
           )}
+
+          {/* Reset progress */}
+          <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid oklch(0.18 0.01 255)', textAlign: 'center' }}>
+            {!confirmReset ? (
+              <button
+                onClick={() => setConfirmReset(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontFamily: "'DM Mono',monospace", color: 'oklch(0.32 0.01 255)', padding: '4px 8px' }}
+              >
+                reset all progress
+              </button>
+            ) : (
+              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 12, color: 'oklch(0.65 0.18 25)', fontFamily: "'DM Sans',sans-serif" }}>
+                  Delete all session data? This cannot be undone.
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => setConfirmReset(false)}
+                    style={{ padding: '7px 18px', borderRadius: 8, border: '1px solid oklch(0.28 0.01 255)', background: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12, fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, letterSpacing: '.06em' }}
+                  >
+                    CANCEL
+                  </button>
+                  <button
+                    onClick={resetProgress}
+                    disabled={resetting}
+                    style={{ padding: '7px 18px', borderRadius: 8, border: '1px solid oklch(0.65 0.18 25/0.5)', background: 'oklch(0.65 0.18 25/0.12)', color: 'oklch(0.65 0.18 25)', cursor: resetting ? 'default' : 'pointer', fontSize: 12, fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, letterSpacing: '.06em' }}
+                  >
+                    {resetting ? 'RESETTING…' : 'YES, RESET'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </main>
       </div>
     </EnvCtx.Provider>
