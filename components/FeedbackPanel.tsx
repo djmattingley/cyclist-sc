@@ -92,8 +92,10 @@ export default function FeedbackPanel({
     fontFamily: "'DM Sans',sans-serif",
   }
 
+  const hasInput = !!(time || soreness || ride) || rpe !== 5
+
   const handleSubmit = async () => {
-    if (!time && !soreness && !ride) return
+    if (!hasInput) return
     setLoad(true)
     const sessionStr = sessionToText(blocks, SC_EX)
     const nextStr = nextBlocks ? sessionToText(nextBlocks, SC_EX) : null
@@ -188,11 +190,11 @@ ${!nextBlocks
           </div>
           <button
             onClick={handleSubmit}
-            disabled={loading || (!time && !soreness && !ride)}
+            disabled={loading || !hasInput}
             style={{
               marginTop: 4, padding: '12px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: (!time && !soreness && !ride) ? 'oklch(0.20 0.01 255)' : c.pill,
-              color: (!time && !soreness && !ride) ? 'var(--muted)' : c.text,
+              background: !hasInput ? 'oklch(0.20 0.01 255)' : c.pill,
+              color: !hasInput ? 'var(--muted)' : c.text,
               fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, letterSpacing: '.08em',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'all .2s',
             }}

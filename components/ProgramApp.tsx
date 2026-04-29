@@ -33,12 +33,13 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
   const [missed, setMissed]               = useState<Record<string, boolean>>(() => progressToMissed(initialProgress))
   const [feedbacks, setFeedbacks]         = useState<Record<string, FeedbackData>>(() => progressToFeedbacks(initialProgress))
   const [exerciseLogs, setExerciseLogs]   = useState<Record<string, ExerciseLogs>>(() => progressToExerciseLogs(initialProgress))
+  const [saveError, setSaveError]         = useState(false)
 
   const block = SC_BLOCKS[activeBlock]
 
   async function upsertProgress(key: string, data: Partial<{ completed: boolean; missed: boolean; feedback: FeedbackData | null; exercise_logs: ExerciseLogs }>) {
     const { blockId, weekN, sessionLabel } = parseKey(key)
-    await supabase.from('user_progress').upsert({
+    const { error } = await supabase.from('user_progress').upsert({
       user_id: user.id,
       block_id: blockId,
       week_n: weekN,
@@ -46,14 +47,18 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
       ...data,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,block_id,week_n,session_label' })
+    if (error) setSaveError(true)
+    else setSaveError(false)
   }
 
   async function saveSettings(data: Partial<Pick<UserSettings, 'env' | 'cycling_phase' | 'active_block'>>) {
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: user.id,
       ...data,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
+    if (error) setSaveError(true)
+    else setSaveError(false)
   }
 
   const toggleComplete = useCallback((key: string) => {
@@ -113,6 +118,18 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
   return (
     <EnvCtx.Provider value={env}>
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {saveError && (
+          <div style={{
+            position: 'sticky', top: 0, zIndex: 20,
+            background: 'oklch(0.65 0.18 25/0.95)', backdropFilter: 'blur(8px)',
+            padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <span style={{ fontSize: 13, color: '#fff', fontFamily: "'DM Sans',sans-serif" }}>
+              ⚠ Save failed — check your connection. Your changes are not persisted.
+            </span>
+            <button onClick={() => setSaveError(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 16, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>✕</button>
+          </div>
+        )}
         <Header
           block={block}
           activeBlock={activeBlock}
