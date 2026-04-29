@@ -62,18 +62,26 @@ export default function Header({ block, activeBlock, onBlockChange, env, onEnvCh
           {SC_BLOCKS.map((b, i) => {
             const done = b.weeks.filter(w => completed[bc(b.id, w.n)]).length
             const allDone = done === 4
+            const accessible = i === 0 || SC_BLOCKS[i - 1].weeks.every(w => !!completed[bc(SC_BLOCKS[i - 1].id, w.n)])
+            const locked = !accessible && activeBlock !== i
             return (
-              <button key={i} onClick={() => onBlockChange(i)} style={{
-                flex: 1, padding: '7px 0', borderRadius: 9, cursor: 'pointer',
-                background: activeBlock === i ? 'oklch(0.82 0.20 128/0.15)' : 'oklch(0.17 0.01 255)',
-                color: activeBlock === i ? 'var(--accent)' : 'var(--muted)',
-                fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: '.06em',
-                border: `1px solid ${activeBlock === i ? 'oklch(0.82 0.20 128/0.4)' : 'oklch(0.24 0.01 255)'}`,
-                transition: 'all .2s',
-              }}>
-                {b.label.replace('BLOCK ', '')} {allDone ? '✓' : ''}
+              <button
+                key={i}
+                onClick={() => !locked && onBlockChange(i)}
+                style={{
+                  flex: 1, padding: '7px 0', borderRadius: 9,
+                  cursor: locked ? 'not-allowed' : 'pointer',
+                  background: activeBlock === i ? 'oklch(0.82 0.20 128/0.15)' : 'oklch(0.17 0.01 255)',
+                  color: activeBlock === i ? 'var(--accent)' : locked ? 'oklch(0.30 0.01 255)' : 'var(--muted)',
+                  fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: '.06em',
+                  border: `1px solid ${activeBlock === i ? 'oklch(0.82 0.20 128/0.4)' : 'oklch(0.24 0.01 255)'}`,
+                  opacity: locked ? 0.45 : 1,
+                  transition: 'all .2s',
+                }}
+              >
+                {b.label.replace('BLOCK ', '')} {allDone ? '✓' : locked ? '🔒' : ''}
                 <div style={{ fontSize: 9, color: activeBlock === i ? 'var(--accent)' : 'oklch(0.40 0.01 255)', fontFamily: "'DM Mono',monospace", marginTop: 1, fontWeight: 400 }}>
-                  {b.weekRange}
+                  {locked ? `complete ${done}/4` : b.weekRange}
                 </div>
               </button>
             )

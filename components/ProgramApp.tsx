@@ -106,7 +106,11 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
     saveSettings({ cycling_phase: p })
   }
 
+  const isBlockAccessible = (i: number) =>
+    i === 0 || SC_BLOCKS[i - 1].weeks.every(w => !!completed[bc(SC_BLOCKS[i - 1].id, w.n)])
+
   const handleBlockChange = (i: number) => {
+    if (!isBlockAccessible(i)) return
     setActiveBlock(i)
     setOpenWeek(null)
     saveSettings({ active_block: i + 1 })
@@ -144,28 +148,56 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
         <main style={{ flex: 1, padding: '20px 24px 40px', maxWidth: 700, margin: '0 auto', width: '100%' }}>
           <BlockInfoCard block={block} activeBlock={activeBlock} cyclingPhase={cyclingPhase} />
           {escalationLevel >= 2 && <EscalationBanner level={escalationLevel} />}
-          <WeekStrip block={block} completed={completed} missed={missed} onToggle={toggleComplete} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {block.weeks.map((w, i) => (
-              <WeekCard
-                key={i}
-                blockId={block.id}
-                weekData={w}
-                isOpen={openWeek === i}
-                onToggle={() => setOpenWeek(openWeek === i ? null : i)}
-                isComplete={!!completed[bc(block.id, w.n)]}
-                onToggleComplete={() => toggleComplete(bc(block.id, w.n))}
-                isMissed={!!missed[bc(block.id, w.n)]}
-                onToggleMissed={() => toggleMissed(bc(block.id, w.n))}
-                feedbacks={feedbacks}
-                onSaveFeedback={saveFeedback}
-                exerciseLogs={exerciseLogs}
-                onSaveExerciseLog={saveExerciseLog}
-                escalationLevel={escalationLevel}
-                cyclingPhase={cyclingPhase}
-              />
-            ))}
-          </div>
+          {activeBlock >= 3 && !cyclingPhase ? (
+            <div style={{ borderRadius: 14, border: '1px solid oklch(0.72 0.18 200/0.35)', background: 'oklch(0.72 0.18 200/0.06)', padding: '28px 24px', textAlign: 'center' }}>
+              <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: '.04em', marginBottom: 8 }}>
+                SELECT YOUR CYCLING PHASE
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.65, marginBottom: 24, maxWidth: 380, margin: '0 auto 24px' }}>
+                Performance Mode sessions are tuned to your current cycling phase. Select below to unlock your sessions — you can change it any time.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8 }}>
+                {([['base','Base','High vol · strength dev'],['build','Build','Mod vol · avoid DOMS'],['specialty','Specialty','Low vol · add RFD'],['race','Race','Freshness only'],['transition','Trans.','Mobility & recovery']] as [CyclingPhase,string,string][]).map(([k, lbl, sub]) => (
+                  <button key={k} onClick={() => handlePhaseChange(k)} style={{
+                    padding: '12px 6px', borderRadius: 10, cursor: 'pointer',
+                    background: 'oklch(0.72 0.18 200/0.12)',
+                    border: '1px solid oklch(0.72 0.18 200/0.35)',
+                    color: 'oklch(0.72 0.18 200)',
+                    fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: '.06em',
+                    transition: 'all .15s',
+                  }}>
+                    {lbl}
+                    <div style={{ fontSize: 9, color: 'oklch(0.55 0.01 255)', fontFamily: "'DM Mono',monospace", marginTop: 4, fontWeight: 400, lineHeight: 1.4 }}>{sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              <WeekStrip block={block} completed={completed} missed={missed} onToggle={toggleComplete} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {block.weeks.map((w, i) => (
+                  <WeekCard
+                    key={i}
+                    blockId={block.id}
+                    weekData={w}
+                    isOpen={openWeek === i}
+                    onToggle={() => setOpenWeek(openWeek === i ? null : i)}
+                    isComplete={!!completed[bc(block.id, w.n)]}
+                    onToggleComplete={() => toggleComplete(bc(block.id, w.n))}
+                    isMissed={!!missed[bc(block.id, w.n)]}
+                    onToggleMissed={() => toggleMissed(bc(block.id, w.n))}
+                    feedbacks={feedbacks}
+                    onSaveFeedback={saveFeedback}
+                    exerciseLogs={exerciseLogs}
+                    onSaveExerciseLog={saveExerciseLog}
+                    escalationLevel={escalationLevel}
+                    cyclingPhase={cyclingPhase}
+                  />
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Next block teaser */}
           {activeBlock < SC_BLOCKS.length - 1 && (
