@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SC_BLOCKS } from '@/lib/program-data'
 import { SC_COLOR_MAP, bc } from '@/lib/utils'
 import type { WeekData, BlockSectionData, ExerciseLogs, FeedbackData, CyclingPhase, SetLog } from '@/lib/types'
@@ -38,6 +38,10 @@ export default function WeekCard({
   const [showFeedback, setShowFeedback] = useState(false)
   const [showQuick, setShowQuick]       = useState(false)
   const [activeSession, setActiveSession] = useState(0)
+
+  useEffect(() => {
+    if (!isOpen) { setShowQuick(false); setShowFeedback(false) }
+  }, [isOpen])
 
   const c = SC_COLOR_MAP[weekData.color] ?? SC_COLOR_MAP.accent
   const isMultiSession = 'sessions' in weekData
@@ -196,7 +200,7 @@ export default function WeekCard({
                 border: `1px solid ${showQuick ? 'oklch(0.78 0.16 60/0.4)' : 'oklch(0.24 0.01 255)'}`,
                 fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 12, letterSpacing: '.08em', transition: 'all .2s',
               }}>
-                ⚡ QUICK
+                {showQuick ? '← FULL' : '⚡ QUICK'}
               </button>
             )}
             <button onClick={e => { e.stopPropagation(); setShowFeedback(f => !f); setShowQuick(false) }} style={{
