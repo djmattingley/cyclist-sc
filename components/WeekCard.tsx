@@ -67,11 +67,11 @@ export default function WeekCard({
 
   return (
     <div style={{
-      background: isOpen ? 'oklch(0.155 0.012 255)' : 'oklch(0.145 0.010 255)',
-      border: `1px solid ${isOpen ? c.border : 'oklch(0.24 0.01 255)'}`,
+      background: isOpen ? 'oklch(0.155 0.012 255)' : isComplete ? 'oklch(0.148 0.011 255)' : 'oklch(0.145 0.010 255)',
+      border: `1px solid ${isOpen ? c.border : isComplete ? 'oklch(0.82 0.20 128/0.25)' : 'oklch(0.24 0.01 255)'}`,
       borderRadius: 14, overflow: 'hidden',
       transition: 'border-color .25s,background .25s',
-      boxShadow: isOpen ? `0 0 32px ${c.glow}` : 'none',
+      boxShadow: isOpen ? `0 0 32px ${c.glow}` : isComplete ? '0 0 0 0 transparent' : 'none',
       opacity: isMissed ? 0.8 : 1,
     }}>
       {/* Header */}
@@ -82,16 +82,17 @@ export default function WeekCard({
       }}>
         <div style={{
           width: 46, height: 46, borderRadius: 10, flexShrink: 0,
-          background: isOpen ? c.pill : 'oklch(0.20 0.01 255)',
+          background: isOpen ? c.pill : isComplete ? 'oklch(0.82 0.20 128/0.18)' : 'oklch(0.20 0.01 255)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .25s',
+          border: isComplete && !isOpen ? '1px solid oklch(0.82 0.20 128/0.35)' : 'none',
         }}>
-          <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 18, color: isOpen ? c.text : 'var(--muted)' }}>
-            W{weekData.n}
+          <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 18, color: isOpen ? c.text : isComplete ? 'oklch(0.82 0.20 128)' : 'var(--muted)' }}>
+            {isComplete && !isOpen ? '✓' : `W${weekData.n}`}
           </span>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 22, letterSpacing: '.02em' }}>
+            <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 22, letterSpacing: '.02em', color: isComplete && !isOpen ? 'oklch(0.65 0.01 255)' : 'var(--text)' }}>
               {weekData.theme.toUpperCase()}
             </span>
             <span style={{
@@ -100,12 +101,13 @@ export default function WeekCard({
               color: isOpen ? c.pill : 'var(--muted)', padding: '2px 8px', borderRadius: 4,
               border: `1px solid ${isOpen ? c.pill + '44' : 'oklch(0.26 0.01 255)'}`, transition: 'all .2s',
             }}>RPE {weekData.rpe}</span>
+            {isComplete && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, background: 'oklch(0.82 0.20 128/0.12)', color: 'oklch(0.82 0.20 128)', padding: '2px 7px', borderRadius: 4, border: '1px solid oklch(0.82 0.20 128/0.35)' }}>✓ DONE</span>}
             {hasFeedback && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, background: 'oklch(0.70 0.15 290/0.15)', color: 'oklch(0.70 0.15 290)', padding: '2px 7px', borderRadius: 4, border: '1px solid oklch(0.70 0.15 290/0.35)' }}>ADAPTED</span>}
             {isMissed && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, background: 'oklch(0.65 0.18 25/0.15)', color: 'oklch(0.65 0.18 25)', padding: '2px 7px', borderRadius: 4, border: '1px solid oklch(0.65 0.18 25/0.35)' }}>MISSED</span>}
           </div>
           <RPEBar rpe={weekData.rpe} />
         </div>
-        <span style={{ fontSize: 18, color: isOpen ? c.pill : 'var(--muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .25s,color .25s', flexShrink: 0 }}>▾</span>
+        <span style={{ fontSize: 18, color: isOpen ? c.pill : isComplete ? 'oklch(0.82 0.20 128/0.6)' : 'var(--muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .25s,color .25s', flexShrink: 0 }}>▾</span>
       </button>
 
       {isOpen && (
