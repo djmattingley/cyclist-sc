@@ -75,6 +75,7 @@ export interface BlockData {
 export interface SetLog {
   kg: number | null
   reps: number
+  done?: boolean
 }
 
 export type ExerciseLogs = Record<string, SetLog[]>

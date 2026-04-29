@@ -53,12 +53,13 @@ export default function ExerciseCard({ exKey, sets, reps, note, loggedSets, onLo
   const c = SC_CAT_COLORS[ex.cat] ?? SC_CAT_COLORS.core
   const setCount = parseSetCount(sets)
   const prescribedReps = parseReps(reps)
-  const showLog = setCount > 0 && ex.cat !== 'mobility'
+  const isMobility = setCount === 0
   const showKg = ex.cat === 'lower' || ex.cat === 'upper'
 
   const [localSets, setLocalSets] = useState<SetLog[]>(() => {
     if (loggedSets && loggedSets.length > 0) return loggedSets
-    return Array.from({ length: setCount }, () => ({ kg: null, reps: prescribedReps }))
+    if (isMobility) return [{ kg: null, reps: 0, done: false }]
+    return Array.from({ length: setCount }, () => ({ kg: null, reps: prescribedReps, done: false }))
   })
 
   function handleField(i: number, field: 'kg' | 'reps', val: string) {
@@ -69,16 +70,38 @@ export default function ExerciseCard({ exKey, sets, reps, note, loggedSets, onLo
     })
   }
 
-  function handleBlur() {
-    onLogSets?.(localSets)
+  function handleBlur(updatedSets?: SetLog[]) {
+    onLogSets?.(updatedSets ?? localSets)
   }
 
-  const loggedCount = localSets.filter(s => s.reps > 0 && (showKg ? s.kg !== null : true)).length
+  function toggleSetDone(i: number) {
+    setLocalSets(prev => {
+      const next = [...prev]
+      next[i] = { ...next[i], done: !next[i].done }
+      onLogSets?.(next)
+      return next
+    })
+  }
+
+  function toggleMobilityDone() {
+    setLocalSets(prev => {
+      const next = [{ ...prev[0], done: !prev[0]?.done }]
+      onLogSets?.(next)
+      return next
+    })
+  }
+
+  const mobilityDone = isMobility && (localSets[0]?.done ?? false)
+
+  const setDone = (s: SetLog) =>
+    s.done || (s.reps > 0 && (showKg ? s.kg !== null : true))
+
+  const loggedCount = isMobility ? 0 : localSets.filter(setDone).length
 
   return (
     <div onClick={() => setOpen(o => !o)} style={{
       background: open ? 'oklch(0.19 0.012 255)' : 'oklch(0.165 0.010 255)',
-      border: `1px solid ${open ? c.accent + '55' : 'oklch(0.24 0.01 255)'}`,
+      border: `1px solid ${open ? c.accent + '55' : mobilityDone ? c.accent + '44' : 'oklch(0.24 0.01 255)'}`,
       borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
       transition: 'border-color .2s,background .2s',
     }}>
@@ -100,14 +123,32 @@ export default function ExerciseCard({ exKey, sets, reps, note, loggedSets, onLo
           {note && <div style={{ fontSize: 11, color: 'oklch(0.60 0.01 255)', marginTop: 2 }}>{note}</div>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {showLog && loggedCount > 0 && (
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: c.accent }}>
-              {loggedCount}/{setCount}
-            </span>
+          {/* Progress indicator */}
+          {isMobility ? (
+            <button
+              onClick={e => { e.stopPropagation(); toggleMobilityDone() }}
+              style={{
+                width: 28, height: 28, borderRadius: '50%', border: `2px solid ${mobilityDone ? c.accent : 'oklch(0.35 0.01 255)'}`,
+                background: mobilityDone ? c.accent + '22' : 'transparent',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, color: mobilityDone ? c.accent : 'oklch(0.40 0.01 255)',
+                transition: 'all .2s', flexShrink: 0,
+              }}
+            >
+              {mobilityDone ? '✓' : '○'}
+            </button>
+          ) : (
+            <>
+              {loggedCount > 0 && (
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: c.accent }}>
+                  {loggedCount}/{setCount}
+                </span>
+              )}
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: sets ? 13 : 12, color: sets ? c.accent : 'var(--muted)', fontWeight: 500 }}>
+                {sets ? `${sets} × ${reps}` : reps}
+              </span>
+            </>
           )}
-          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: sets ? 13 : 12, color: sets ? c.accent : 'var(--muted)', fontWeight: 500 }}>
-            {sets ? `${sets} × ${reps}` : reps}
-          </span>
           <span style={{ color: 'var(--muted)', fontSize: 12, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>▾</span>
         </div>
       </div>
@@ -116,51 +157,82 @@ export default function ExerciseCard({ exKey, sets, reps, note, loggedSets, onLo
         <div style={{ padding: '0 14px 14px', borderTop: '1px solid oklch(0.22 0.01 255)' }}>
 
           {/* Set logging */}
-          {showLog && (
+          {!isMobility && (
             <div style={{ marginTop: 12, marginBottom: 14 }} onClick={e => e.stopPropagation()}>
               <div style={{ fontSize: 10, fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, letterSpacing: '.12em', color: c.accent, marginBottom: 8 }}>
                 LOG SETS
               </div>
-              {localSets.map((s, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                  <span style={{ fontSize: 11, color: 'var(--muted)', width: 38, fontFamily: "'DM Mono',monospace", flexShrink: 0 }}>
-                    SET {i + 1}
-                  </span>
-                  {showKg && (
-                    <>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        placeholder="—"
-                        min={0}
-                        value={s.kg ?? ''}
-                        onChange={e => handleField(i, 'kg', e.target.value)}
-                        onBlur={handleBlur}
-                        style={INPUT_STYLE}
-                      />
-                      <span style={{ fontSize: 11, color: 'var(--muted)', flexShrink: 0 }}>kg</span>
-                    </>
-                  )}
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    value={s.reps || ''}
-                    onChange={e => handleField(i, 'reps', e.target.value)}
-                    onBlur={handleBlur}
-                    style={INPUT_STYLE}
-                  />
-                  <span style={{ fontSize: 11, color: 'var(--muted)', flexShrink: 0 }}>reps</span>
-                  {(showKg ? s.kg !== null && s.reps > 0 : s.reps > 0) && (
-                    <span style={{ color: c.accent, fontSize: 13, marginLeft: 2 }}>✓</span>
-                  )}
-                </div>
-              ))}
+              {localSets.map((s, i) => {
+                const done = setDone(s)
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                    <span style={{ fontSize: 11, color: 'var(--muted)', width: 38, fontFamily: "'DM Mono',monospace", flexShrink: 0 }}>
+                      SET {i + 1}
+                    </span>
+                    {showKg && (
+                      <>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="—"
+                          min={0}
+                          value={s.kg ?? ''}
+                          onChange={e => handleField(i, 'kg', e.target.value)}
+                          onBlur={() => handleBlur()}
+                          style={INPUT_STYLE}
+                        />
+                        <span style={{ fontSize: 11, color: 'var(--muted)', flexShrink: 0 }}>kg</span>
+                      </>
+                    )}
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={s.reps || ''}
+                      onChange={e => handleField(i, 'reps', e.target.value)}
+                      onBlur={() => handleBlur()}
+                      style={INPUT_STYLE}
+                    />
+                    <span style={{ fontSize: 11, color: 'var(--muted)', flexShrink: 0 }}>reps</span>
+                    <button
+                      onClick={() => toggleSetDone(i)}
+                      style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        border: `2px solid ${done ? c.accent : 'oklch(0.35 0.01 255)'}`,
+                        background: done ? c.accent + '22' : 'transparent',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 14, color: done ? c.accent : 'oklch(0.40 0.01 255)',
+                        transition: 'all .2s', flexShrink: 0, marginLeft: 2,
+                      }}
+                    >
+                      {done ? '✓' : '○'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Mobility done toggle */}
+          {isMobility && (
+            <div style={{ marginTop: 12, marginBottom: 14 }} onClick={e => e.stopPropagation()}>
+              <button
+                onClick={toggleMobilityDone}
+                style={{
+                  width: '100%', padding: '10px 0', borderRadius: 8, border: `1px solid ${mobilityDone ? c.accent + '66' : 'oklch(0.28 0.01 255)'}`,
+                  background: mobilityDone ? c.accent + '18' : 'oklch(0.16 0.01 255)',
+                  color: mobilityDone ? c.accent : 'var(--muted)',
+                  fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: '.10em',
+                  cursor: 'pointer', transition: 'all .2s',
+                }}
+              >
+                {mobilityDone ? '✓ DONE' : '○ MARK DONE'}
+              </button>
             </div>
           )}
 
           {/* Coaching cues */}
-          <div style={{ marginTop: showLog ? 0 : 12, display: 'grid', gap: 10 }}>
+          <div style={{ marginTop: isMobility ? 0 : 0, display: 'grid', gap: 10 }}>
             <div>
               <div style={{ fontSize: 10, fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, letterSpacing: '.12em', color: c.accent, marginBottom: 6 }}>
                 COACHING CUES
