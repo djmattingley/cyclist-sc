@@ -94,6 +94,7 @@ export interface UserSettings {
   env: Environment
   cycling_phase: CyclingPhase | null
   active_block: number
+  cycling_hours: number | null
   updated_at: string
 }
 

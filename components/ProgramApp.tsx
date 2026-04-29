@@ -29,7 +29,8 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
   const [activeBlock, setActiveBlock] = useState(initialSettings ? initialSettings.active_block - 1 : 0)
   const [openWeek, setOpenWeek]       = useState<number | null>(null)
   const [env, setEnv]                 = useState<Environment>(initialSettings?.env ?? 'home')
-  const [cyclingPhase, setCyclingPhase] = useState<CyclingPhase | null>(initialSettings?.cycling_phase ?? null)
+  const [cyclingPhase, setCyclingPhase]   = useState<CyclingPhase | null>(initialSettings?.cycling_phase ?? null)
+  const [cyclingHours, setCyclingHours]   = useState<number | null>(initialSettings?.cycling_hours ?? null)
   const [completed, setCompleted]         = useState<Record<string, boolean>>(() => progressToCompleted(initialProgress))
   const [missed, setMissed]               = useState<Record<string, boolean>>(() => progressToMissed(initialProgress))
   const [feedbacks, setFeedbacks]         = useState<Record<string, FeedbackData>>(() => progressToFeedbacks(initialProgress))
@@ -70,7 +71,7 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
     else setSaveError(false)
   }
 
-  async function saveSettings(data: Partial<Pick<UserSettings, 'env' | 'cycling_phase' | 'active_block'>>) {
+  async function saveSettings(data: Partial<Pick<UserSettings, 'env' | 'cycling_phase' | 'active_block' | 'cycling_hours'>>) {
     const { error } = await supabase.from('user_settings').upsert({
       user_id: user.id,
       ...data,
@@ -162,6 +163,11 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
     saveSettings({ cycling_phase: p })
   }
 
+  const handleCyclingHoursChange = (h: number | null) => {
+    setCyclingHours(h)
+    saveSettings({ cycling_hours: h })
+  }
+
   const isBlockAccessible = (i: number) =>
     i === 0 || SC_BLOCKS[i - 1].weeks.every(w => !!completed[bc(SC_BLOCKS[i - 1].id, w.n)])
 
@@ -212,12 +218,29 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
           onEnvChange={handleEnvChange}
           cyclingPhase={cyclingPhase}
           onPhaseChange={handlePhaseChange}
+          cyclingHours={cyclingHours}
+          onCyclingHoursChange={handleCyclingHoursChange}
           completed={completed}
           blockDone={blockDone}
         />
         <main style={{ flex: 1, padding: '20px 24px 40px', maxWidth: 700, margin: '0 auto', width: '100%' }}>
           <BlockInfoCard block={block} activeBlock={activeBlock} cyclingPhase={cyclingPhase} />
           {escalationLevel >= 2 && <EscalationBanner level={escalationLevel} />}
+          {cyclingHours !== null && cyclingHours >= 10 && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'oklch(0.78 0.16 60/0.08)', border: '1px solid oklch(0.78 0.16 60/0.35)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 14, flexShrink: 0 }}>⚠</span>
+              <div>
+                <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 12, letterSpacing: '.10em', color: 'oklch(0.78 0.16 60)', marginBottom: 3 }}>
+                  HIGH CYCLING WEEK — {cyclingHours}H
+                </div>
+                <div style={{ fontSize: 12, color: 'oklch(0.68 0.005 90)', lineHeight: 1.55 }}>
+                  {cyclingHours >= 13
+                    ? 'Consider skipping S&C or doing mobility only this week.'
+                    : 'Consider reducing to deload-level S&C — drop reps, remove last lower exercise.'}
+                </div>
+              </div>
+            </div>
+          )}
           {activeBlock >= 3 && !cyclingPhase ? (
             <div style={{ borderRadius: 14, border: '1px solid oklch(0.72 0.18 200/0.35)', background: 'oklch(0.72 0.18 200/0.06)', padding: '28px 24px', textAlign: 'center' }}>
               <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: '.04em', marginBottom: 8 }}>
@@ -264,6 +287,7 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
                     onSaveExerciseLog={saveExerciseLog}
                     escalationLevel={escalationLevel}
                     cyclingPhase={cyclingPhase}
+                    cyclingHours={cyclingHours}
                   />
                 ))}
               </div>

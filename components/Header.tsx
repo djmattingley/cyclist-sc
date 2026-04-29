@@ -12,6 +12,8 @@ interface Props {
   onEnvChange: (e: Environment) => void
   cyclingPhase: CyclingPhase | null
   onPhaseChange: (p: CyclingPhase) => void
+  cyclingHours: number | null
+  onCyclingHoursChange: (h: number | null) => void
   completed: Record<string, boolean>
   blockDone: number
 }
@@ -20,7 +22,7 @@ const PHASES: [CyclingPhase, string][] = [
   ['base', 'Base'], ['build', 'Build'], ['specialty', 'Specialty'], ['race', 'Race'], ['transition', 'Trans.'],
 ]
 
-export default function Header({ block, activeBlock, onBlockChange, env, onEnvChange, cyclingPhase, onPhaseChange, completed, blockDone }: Props) {
+export default function Header({ block, activeBlock, onBlockChange, env, onEnvChange, cyclingPhase, onPhaseChange, cyclingHours, onCyclingHoursChange, completed, blockDone }: Props) {
   const progress = (blockDone / 4) * 100
 
   return (
@@ -104,6 +106,40 @@ export default function Header({ block, activeBlock, onBlockChange, env, onEnvCh
                 {e.toUpperCase()}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Cycling volume */}
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'var(--muted)', letterSpacing: '.06em' }}>CYCLING THIS WEEK</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {cyclingHours !== null && (
+                <span style={{
+                  fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 500,
+                  color: cyclingHours >= 13 ? 'oklch(0.65 0.18 25)' : cyclingHours >= 10 ? 'oklch(0.78 0.16 60)' : 'var(--accent)',
+                }}>
+                  {cyclingHours}h
+                </span>
+              )}
+              {cyclingHours !== null && (
+                <button
+                  onClick={() => onCyclingHoursChange(null)}
+                  style={{ background: 'none', border: 'none', color: 'oklch(0.35 0.01 255)', cursor: 'pointer', fontSize: 11, padding: '0 2px', lineHeight: 1 }}
+                  title="Clear"
+                >✕</button>
+              )}
+            </div>
+          </div>
+          <input
+            type="range" min={0} max={15} step={1}
+            value={cyclingHours ?? 0}
+            onChange={e => onCyclingHoursChange(Number(e.target.value))}
+            style={{ width: '100%', accentColor: cyclingHours !== null && cyclingHours >= 10 ? (cyclingHours >= 13 ? 'oklch(0.65 0.18 25)' : 'oklch(0.78 0.16 60)') : 'var(--accent)', cursor: 'pointer' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+            <span style={{ fontSize: 9, color: 'oklch(0.35 0.01 255)', fontFamily: "'DM Mono',monospace" }}>0h</span>
+            <span style={{ fontSize: 9, color: 'oklch(0.35 0.01 255)', fontFamily: "'DM Mono',monospace" }}>15h+</span>
           </div>
         </div>
 

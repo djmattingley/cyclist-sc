@@ -25,6 +25,7 @@ interface Props {
   onSaveExerciseLog: (sessionKey: string, exKey: string, sets: SetLog[]) => void
   escalationLevel: number
   cyclingPhase: CyclingPhase | null
+  cyclingHours: number | null
 }
 
 export default function WeekCard({
@@ -33,7 +34,7 @@ export default function WeekCard({
   isMissed, onToggleMissed,
   feedbacks, onSaveFeedback,
   exerciseLogs, onSaveExerciseLog,
-  escalationLevel, cyclingPhase,
+  escalationLevel, cyclingPhase, cyclingHours,
 }: Props) {
   const [showFeedback, setShowFeedback] = useState(false)
   const [showQuick, setShowQuick]       = useState(false)
@@ -227,6 +228,7 @@ export default function WeekCard({
               onClose={() => setShowFeedback(false)}
               escalationLevel={escalationLevel}
               cyclingPhase={cyclingPhase}
+              cyclingHours={cyclingHours}
             />
           )}
         </div>

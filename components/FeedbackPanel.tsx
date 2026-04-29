@@ -18,6 +18,7 @@ interface Props {
   onClose: () => void
   escalationLevel: number
   cyclingPhase: CyclingPhase | null
+  cyclingHours: number | null
 }
 
 const KEY_COLORS: Record<string, string> = {
@@ -72,7 +73,7 @@ function renderResult(text: string) {
 
 export default function FeedbackPanel({
   blockId, weekN, sessionLabel, blocks, nextBlocks, nextLabel,
-  saved, onSave, onClose, escalationLevel, cyclingPhase,
+  saved, onSave, onClose, escalationLevel, cyclingPhase, cyclingHours,
 }: Props) {
   const env = useEnv()
   const [time, setTime]     = useState(saved?.time ?? '')
@@ -103,7 +104,7 @@ export default function FeedbackPanel({
     const plannedRpe = 'rpe' in (blockWeek ?? {}) ? (blockWeek as { rpe: string }).rpe : '?'
 
     const prompt = `Athlete completed Block ${blockId} Week ${weekN}${sessionLabel ? ' — ' + sessionLabel : ''}.
-Block: ${blockData?.label} (${blockData?.subtitle}). Environment: ${env === 'gym' ? 'Gym' : 'Home'}. Cycling Phase: ${cyclingPhase ?? 'Rebuild Mode'}.${escalMsg}
+Block: ${blockData?.label} (${blockData?.subtitle}). Environment: ${env === 'gym' ? 'Gym' : 'Home'}. Cycling Phase: ${cyclingPhase ?? 'Rebuild Mode'}. Cycling volume this week: ${cyclingHours !== null ? `${cyclingHours}h` : 'not reported'}.${escalMsg}
 
 COMPLETED SESSION:
 ${sessionStr}
