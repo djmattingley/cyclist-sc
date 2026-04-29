@@ -80,6 +80,16 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
     else setSaveError(false)
   }
 
+  async function deleteProgressRow(key: string) {
+    const { blockId, weekN, sessionLabel } = parseKey(key)
+    const base = supabase.from('user_progress').delete()
+      .eq('user_id', user.id).eq('block_id', blockId).eq('week_n', weekN)
+    const { error } = sessionLabel
+      ? await base.eq('session_label', sessionLabel)
+      : await base.is('session_label', null)
+    if (error) setSaveError(true)
+  }
+
   async function resetProgress() {
     setResetting(true)
     const { error } = await supabase.from('user_progress').delete().eq('user_id', user.id)
@@ -97,19 +107,31 @@ export default function ProgramApp({ user, initialSettings, initialProgress }: P
 
   const toggleComplete = useCallback((key: string) => {
     setCompleted(prev => {
-      const next = { ...prev, [key]: !prev[key] }
-      upsertProgress(key, { completed: next[key] })
+      const wasComplete = !!prev[key]
+      const next = { ...prev, [key]: !wasComplete }
+      if (!wasComplete) {
+        upsertProgress(key, { completed: true })
+      } else {
+        const hasOtherData = !!missed[key] || !!feedbacks[key] || Object.keys(exerciseLogs[key] ?? {}).length > 0
+        hasOtherData ? upsertProgress(key, { completed: false }) : deleteProgressRow(key)
+      }
       return next
     })
-  }, [])
+  }, [missed, feedbacks, exerciseLogs])
 
   const toggleMissed = useCallback((key: string) => {
     setMissed(prev => {
-      const next = { ...prev, [key]: !prev[key] }
-      upsertProgress(key, { missed: next[key] })
+      const wasMissed = !!prev[key]
+      const next = { ...prev, [key]: !wasMissed }
+      if (!wasMissed) {
+        upsertProgress(key, { missed: true })
+      } else {
+        const hasOtherData = !!completed[key] || !!feedbacks[key] || Object.keys(exerciseLogs[key] ?? {}).length > 0
+        hasOtherData ? upsertProgress(key, { missed: false }) : deleteProgressRow(key)
+      }
       return next
     })
-  }, [])
+  }, [completed, feedbacks, exerciseLogs])
 
   const saveFeedback = useCallback((key: string, data: FeedbackData | null) => {
     setFeedbacks(prev => {
